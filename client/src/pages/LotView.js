@@ -46,14 +46,14 @@ export default function LotView() {
   );
 
   const currentHour = new Date().getHours();
-  const pricing = lot ? getDynamicPrice(lot.pricePerHour, currentHour) : null;
+  const available = slots.filter(s => s.status === 'available').length;
+  const pricing = lot ? getDynamicPrice(lot.pricePerHour, currentHour, lot.totalSlots, available) : null;
   const floors = [...new Set(slots.map(s => s.floor))].sort();
   const filtered = slots.filter(s =>
     (filterFloor === 'all' || s.floor === Number(filterFloor)) &&
     (filterType === 'all' || s.type === filterType)
   );
 
-  const available = slots.filter(s => s.status === 'available').length;
   const occupied = slots.filter(s => s.status === 'occupied').length;
   const reserved = slots.filter(s => s.status === 'reserved').length;
 
@@ -61,6 +61,7 @@ export default function LotView() {
     available: { bg: 'rgba(0, 232, 122, 0.12)', border: '#00e87a', text: '#00e87a' },
     occupied: { bg: 'rgba(239, 68, 68, 0.12)', border: '#ef4444', text: '#ef4444' },
     reserved: { bg: 'rgba(245, 158, 11, 0.12)', border: '#f59e0b', text: '#f59e0b' },
+    locked: { bg: 'rgba(56, 189, 248, 0.12)', border: '#38bdf8', text: '#38bdf8' }, // Light blue for locked
   };
 
   const typeIcons = { regular: '🚗', compact: '🚙', handicapped: '♿', ev: '⚡' };
@@ -86,7 +87,14 @@ export default function LotView() {
               <div style={{ fontSize: '28px', fontWeight: '900', color: 'var(--accent)', fontFamily: 'JetBrains Mono' }}>
                 {formatCurrency(pricing?.price)}
               </div>
-              <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>per hour • {pricing?.label}</div>
+              <div style={{ fontSize: '12px', color: pricing?.isSurge ? '#ef4444' : 'var(--text-muted)', fontWeight: pricing?.isSurge ? '700' : '400' }}>
+                {pricing?.label} • {pricing?.multiplier}x
+              </div>
+              {pricing?.isSurge && (
+                <div style={{ fontSize: '10px', color: '#ef4444', fontWeight: '900', marginTop: '4px', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                  🔥 High Demand Surge
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -163,7 +171,7 @@ export default function LotView() {
                     <span style={{ fontSize: '16px' }}>{typeIcons[slot.type]}</span>
                     <span style={{ fontSize: '11px', fontWeight: '700', fontFamily: 'JetBrains Mono' }}>{slot.slotNumber}</span>
                     <span style={{ fontSize: '9px', fontWeight: '600', textTransform: 'uppercase', opacity: 0.8 }}>
-                      {slot.status === 'available' ? 'Free' : slot.status}
+                      {slot.status === 'available' ? 'Free' : slot.status === 'locked' ? 'Locked' : slot.status}
                     </span>
                   </button>
                 );
@@ -176,6 +184,7 @@ export default function LotView() {
                 { label: 'Available', color: 'var(--green)' },
                 { label: 'Occupied', color: '#ef4444' },
                 { label: 'Reserved', color: 'var(--amber)' },
+                { label: 'Locked', color: '#38bdf8' },
               ].map(l => (
                 <div key={l.label} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: 'var(--text-dim)' }}>
                   <span style={{ width: 12, height: 12, borderRadius: '3px', background: l.color }}></span>

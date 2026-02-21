@@ -3,6 +3,7 @@ const router = express.Router();
 const ParkingLot = require('../models/ParkingLot');
 const ParkingSlot = require('../models/ParkingSlot');
 const { auth } = require('../middleware/auth');
+const redisClient = require('../config/redis');
 
 // GET /api/parking/lots
 router.get('/lots', async (req, res) => {
@@ -77,23 +78,74 @@ router.put('/slots/:id/status', auth, async (req, res) => {
 });
 
 // POST /api/parking/lock-slot
-router.post('/lock-slot', auth, async (req, res) => {
+router.post('/lock-slot', async (req, res) => {
   try {
-    const { slotId } = req.body;
-    const lockDuration = 5 * 60 * 1000; // 5 minutes
-    const lockExpiresAt = new Date(Date.now() + lockDuration);
+    const { slotId, userId } = req.body;
+    const lockKey = `lock:${slotId}`;
 
-    const slot = await ParkingSlot.findOneAndUpdate(
-      { _id: slotId, $or: [{ status: 'available' }, { status: 'locked', lockExpiresAt: { $lte: new Date() } }] },
-      { status: 'locked', lockExpiresAt, updatedAt: new Date() },
-      { new: true }
+    const isLocked = await redisClient.set(
+      lockKey,
+      userId || 'anonymous',
+      {
+        NX: true,
+        EX: 300, // 5 minutes
+      }
     );
 
-    if (!slot) return res.status(400).json({ message: 'Slot is already booked or locked by someone else' });
+    if (!isLocked) {
+      return res.status(400).json({
+        success: false,
+        message: "Slot already locked",
+      });
+    }
 
-    res.json({ slotId: slot._id, lockStartTime: new Date().toISOString() });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
+    return res.json({
+      success: true,
+      message: "Slot locked successfully",
+      expiresIn: 300
+    });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
+// GET /api/parking/lock-status/:slotId
+router.get("/lock-status/:slotId", async (req, res) => {
+  try {
+    const { slotId } = req.params;
+    const ttl = await redisClient.ttl(`lock:${slotId}`);
+
+    if (ttl > 0) {
+      return res.json({
+        locked: true,
+        timeLeft: ttl
+      });
+    }
+
+    return res.json({
+      locked: false,
+      timeLeft: 0
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+// POST /api/parking/unlock-slot
+router.post("/unlock-slot", async (req, res) => {
+  try {
+    const { slotId } = req.body;
+    await redisClient.del(`lock:${slotId}`);
+    res.json({
+      success: true,
+      message: "Slot unlocked"
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
   }
 });
 
@@ -101,11 +153,12 @@ router.post('/lock-slot', auth, async (req, res) => {
 router.post('/release-lock', auth, async (req, res) => {
   try {
     const { slotId } = req.body;
+    const userId = req.user._id;
 
-    // Only release if it's currently marked as locked
+    // Only release if it's currently marked as locked and by the same user
     const slot = await ParkingSlot.findOneAndUpdate(
-      { _id: slotId, status: 'locked' },
-      { status: 'available', $unset: { lockExpiresAt: "" }, updatedAt: new Date() },
+      { _id: slotId, status: 'locked', lockedBy: userId },
+      { status: 'available', $unset: { lockExpiresAt: "", lockedBy: "" }, updatedAt: new Date() },
       { new: true }
     );
 

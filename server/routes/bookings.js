@@ -20,9 +20,13 @@ const getDynamicPrice = (basePrice, hour) => {
 router.post('/', auth, async (req, res) => {
   try {
     const { slotId, lotId, startTime, endTime, vehicleNumber, paymentMethod } = req.body;
-    
+
     const slot = await ParkingSlot.findById(slotId);
-    if (!slot || slot.status !== 'available') {
+
+    const isAvailable = slot && (slot.status === 'available' || (slot.status === 'locked' && new Date() > new Date(slot.lockExpiresAt)));
+    const isLockedByMe = slot && slot.status === 'locked' && slot.lockedBy && slot.lockedBy.toString() === req.user._id.toString();
+
+    if (!slot || (!isAvailable && !isLockedByMe)) {
       return res.status(400).json({ message: 'Slot not available' });
     }
 
@@ -30,7 +34,7 @@ router.post('/', auth, async (req, res) => {
     const start = new Date(startTime);
     const end = new Date(endTime);
     const durationHours = Math.ceil((end - start) / (1000 * 60 * 60));
-    
+
     const dynamicPrice = getDynamicPrice(lot.pricePerHour, start.getHours());
     const totalCost = dynamicPrice * durationHours;
 

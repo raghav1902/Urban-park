@@ -1,10 +1,38 @@
-// Dynamic pricing based on hour
-export const getDynamicPrice = (basePrice, hour) => {
+// Dynamic pricing based on hour and occupancy
+export const getDynamicPrice = (basePrice, hour, totalSlots, availableSlots) => {
   const peakHours = [9, 10, 18, 19, 20];
   const offPeakHours = [0, 1, 2, 3, 4, 5, 23];
-  if (peakHours.includes(hour)) return { price: basePrice * 1.5, label: 'Peak', multiplier: 1.5 };
-  if (offPeakHours.includes(hour)) return { price: basePrice * 0.8, label: 'Off-Peak', multiplier: 0.8 };
-  return { price: basePrice, label: 'Normal', multiplier: 1 };
+
+  let multiplier = 1;
+  let label = 'Normal';
+
+  // 1. Time-based pricing
+  if (peakHours.includes(hour)) {
+    multiplier = 1.5;
+    label = 'Peak';
+  } else if (offPeakHours.includes(hour)) {
+    multiplier = 0.8;
+    label = 'Off-Peak';
+  }
+
+  // 2. Occupancy-based Surge Pricing (Overrides or compounds?)
+  // Let's make it compound for maximum realism
+  const occupancyPercent = ((totalSlots - availableSlots) / totalSlots) * 100;
+
+  if (availableSlots <= 2 || occupancyPercent >= 95) {
+    multiplier *= 2.0;
+    label = label === 'Normal' ? 'Critical Surge' : `${label} + Critical Surge`;
+  } else if (occupancyPercent >= 80) {
+    multiplier *= 1.5;
+    label = label === 'Normal' ? 'High Demand' : `${label} + Surge`;
+  }
+
+  return {
+    price: Math.round(basePrice * multiplier),
+    label,
+    multiplier: Number(multiplier.toFixed(2)),
+    isSurge: occupancyPercent >= 80 || availableSlots <= 2
+  };
 };
 
 // Mock demand prediction by hour

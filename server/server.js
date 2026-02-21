@@ -4,6 +4,7 @@ const socketIo = require('socket.io');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const dotenv = require('dotenv');
+require('./config/redis'); // Initialize Redis connection
 
 dotenv.config();
 

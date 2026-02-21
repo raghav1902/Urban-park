@@ -7,6 +7,7 @@ const parkingSlotSchema = new mongoose.Schema({
   status: { type: String, enum: ['available', 'occupied', 'reserved', 'locked'], default: 'available' },
   type: { type: String, enum: ['regular', 'compact', 'handicapped', 'ev'], default: 'regular' },
   lockExpiresAt: { type: Date }, // Time when temporary hold expires
+  lockedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   updatedAt: { type: Date, default: Date.now }
 });
 
