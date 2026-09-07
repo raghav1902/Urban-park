@@ -3,7 +3,22 @@ import { useParams, useNavigate } from 'react-router-dom';
 import io from 'socket.io-client';
 import api from '../utils/api';
 import { getDynamicPrice, formatCurrency } from '../utils/pricing';
+import {
+  IconArrowLeft,
+  IconMapPin,
+  IconArrowRight,
+  IconCheck,
+  IconZap,
+  IconCar,
+  IconShield,
+  IconClock
+} from '../components/Icons';
+import SlotGridMatrix from '../components/SlotGridMatrix';
 
+/**
+ * Enterprise Slot Selection Page
+ * Completely responsive, 100% white theme, clean telemetry updates and zero emojis
+ */
 export default function LotView() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -19,12 +34,17 @@ export default function LotView() {
     const socket = io('http://localhost:5000');
     socket.emit('join-lot', id);
     socket.on('slot-update', ({ changedSlots }) => {
-      setSlots(prev => prev.map(slot => {
-        const changed = changedSlots.find(c => c.slotId === slot._id);
-        return changed ? { ...slot, status: changed.status } : slot;
-      }));
+      setSlots((prev) =>
+        prev.map((slot) => {
+          const changed = changedSlots.find((c) => c.slotId === slot._id);
+          return changed ? { ...slot, status: changed.status } : slot;
+        })
+      );
     });
-    return () => { socket.emit('leave-lot', id); socket.disconnect(); };
+    return () => {
+      socket.emit('leave-lot', id);
+      socket.disconnect();
+    };
   }, [id]);
 
   const fetchData = async () => {
@@ -35,201 +55,240 @@ export default function LotView() {
       ]);
       setLot(lotRes.data);
       setSlots(slotsRes.data);
-    } catch (err) { console.error(err); }
-    finally { setLoading(false); }
+    } catch (err) {
+      console.error('Failed to fetch lot slots:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  if (loading) return (
-    <div style={{ minHeight: '100vh', background: 'var(--navy)', paddingTop: '100px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ fontSize: '48px', animation: 'float 1s ease-in-out infinite' }}>🅿️</div>
-    </div>
-  );
+  if (loading) {
+    return (
+      <div
+        style={{
+          minHeight: '100vh',
+          background: '#f8fafc',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}
+      >
+        <div style={{ textAlign: 'center' }}>
+          <div
+            style={{
+              width: '40px',
+              height: '40px',
+              border: '3px solid #e2e8f0',
+              borderTopColor: '#2563eb',
+              borderRadius: '50%',
+              animation: 'spin 0.8s linear infinite',
+              margin: '0 auto 12px'
+            }}
+          />
+          <span style={{ fontSize: '14px', color: '#64748b', fontWeight: '500' }}>
+            Loading facility layout...
+          </span>
+        </div>
+      </div>
+    );
+  }
 
   const currentHour = new Date().getHours();
-  const available = slots.filter(s => s.status === 'available').length;
-  const pricing = lot ? getDynamicPrice(lot.pricePerHour, currentHour, lot.totalSlots, available) : null;
-  const floors = [...new Set(slots.map(s => s.floor))].sort();
-  const filtered = slots.filter(s =>
-    (filterFloor === 'all' || s.floor === Number(filterFloor)) &&
-    (filterType === 'all' || s.type === filterType)
-  );
+  const availableSlotsCount = slots.filter((s) => s.status === 'available').length;
+  const occupiedSlotsCount = slots.filter((s) => s.status === 'occupied').length;
+  const reservedSlotsCount = slots.filter((s) => s.status === 'reserved' || s.status === 'locked').length;
 
-  const occupied = slots.filter(s => s.status === 'occupied').length;
-  const reserved = slots.filter(s => s.status === 'reserved').length;
+  const pricing = lot
+    ? getDynamicPrice(lot.pricePerHour, currentHour, lot.totalSlots, availableSlotsCount)
+    : null;
 
-  const statusColors = {
-    available: { bg: 'rgba(0, 232, 122, 0.12)', border: '#00e87a', text: '#00e87a' },
-    occupied: { bg: 'rgba(239, 68, 68, 0.12)', border: '#ef4444', text: '#ef4444' },
-    reserved: { bg: 'rgba(245, 158, 11, 0.12)', border: '#f59e0b', text: '#f59e0b' },
-    locked: { bg: 'rgba(56, 189, 248, 0.12)', border: '#38bdf8', text: '#38bdf8' }, // Light blue for locked
-  };
-
-  const typeIcons = { regular: '🚗', compact: '🚙', handicapped: '♿', ev: '⚡' };
+  const floors = [...new Set(slots.map((s) => s.floor))].sort();
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--navy)', paddingTop: '80px', paddingBottom: '60px' }}>
-      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 24px' }}>
-        {/* Header */}
-        <div style={{ marginBottom: '32px' }}>
-          <button onClick={() => navigate('/dashboard')} style={{
-            background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer',
-            fontSize: '14px', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '6px'
-          }}>← Back to Search</button>
-          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
+    <div style={{ minHeight: '100vh', background: '#f8fafc', paddingTop: '64px', paddingBottom: '60px' }}>
+      {/* Header Container */}
+      <div style={{ background: '#ffffff', borderBottom: '1px solid #e2e8f0', padding: '24px 0' }}>
+        <div className="container">
+          <button
+            onClick={() => navigate('/dashboard')}
+            className="btn btn-ghost"
+            style={{ padding: '6px 12px', fontSize: '13px', marginBottom: '16px' }}
+          >
+            <IconArrowLeft size={15} />
+            Back to Facility Directory
+          </button>
+
+          <div
+            style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              justifyContent: 'space-between',
+              alignItems: 'flex-start',
+              gap: '20px'
+            }}
+          >
             <div>
-              <h1 style={{ fontSize: '32px', fontWeight: '800', marginBottom: '8px' }}>{lot?.name}</h1>
-              <p style={{ color: 'var(--text-dim)', fontSize: '15px' }}>📍 {lot?.location}</p>
+              <div
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  fontSize: '12px',
+                  fontWeight: '600',
+                  color: '#2563eb',
+                  textTransform: 'uppercase',
+                  marginBottom: '4px'
+                }}
+              >
+                Facility Inspection
+              </div>
+              <h1 style={{ fontSize: '28px', fontWeight: '800', color: '#0f172a', letterSpacing: '-0.02em' }}>
+                {lot?.name}
+              </h1>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#64748b', fontSize: '14px', marginTop: '4px' }}>
+                <IconMapPin size={15} color="#94a3b8" />
+                <span>{lot?.location}</span>
+              </div>
             </div>
-            <div style={{
-              padding: '16px 24px', borderRadius: '12px',
-              background: 'var(--navy-card)', border: '1px solid var(--navy-border)', textAlign: 'right'
-            }}>
-              <div style={{ fontSize: '28px', fontWeight: '900', color: 'var(--accent)', fontFamily: 'JetBrains Mono' }}>
+
+            {/* Dynamic Tariff Badge */}
+            <div
+              style={{
+                background: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                borderRadius: '10px',
+                padding: '12px 20px',
+                textAlign: 'right'
+              }}
+            >
+              <div style={{ fontSize: '24px', fontWeight: '800', color: '#2563eb' }}>
                 {formatCurrency(pricing?.price)}
+                <span style={{ fontSize: '13px', fontWeight: '500', color: '#64748b' }}> / hr</span>
               </div>
-              <div style={{ fontSize: '12px', color: pricing?.isSurge ? '#ef4444' : 'var(--text-muted)', fontWeight: pricing?.isSurge ? '700' : '400' }}>
-                {pricing?.label} • {pricing?.multiplier}x
+              <div style={{ fontSize: '12px', fontWeight: '600', color: pricing?.isSurge ? '#dc2626' : '#059669', marginTop: '2px' }}>
+                {pricing?.label} Rate ({pricing?.multiplier}x Tariff)
               </div>
-              {pricing?.isSurge && (
-                <div style={{ fontSize: '10px', color: '#ef4444', fontWeight: '900', marginTop: '4px', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                  🔥 High Demand Surge
-                </div>
-              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="container" style={{ paddingTop: '28px' }}>
+        {/* KPI Strip */}
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+            gap: '16px',
+            marginBottom: '28px'
+          }}
+        >
+          <div className="stat-card">
+            <span className="stat-label">Available Slots</span>
+            <div style={{ fontSize: '28px', fontWeight: '800', color: '#059669' }}>
+              {availableSlotsCount}
+            </div>
+          </div>
+
+          <div className="stat-card">
+            <span className="stat-label">Occupied Vehicles</span>
+            <div style={{ fontSize: '28px', fontWeight: '800', color: '#dc2626' }}>
+              {occupiedSlotsCount}
+            </div>
+          </div>
+
+          <div className="stat-card">
+            <span className="stat-label">Pending / Reserved</span>
+            <div style={{ fontSize: '28px', fontWeight: '800', color: '#d97706' }}>
+              {reservedSlotsCount}
             </div>
           </div>
         </div>
 
-        {/* Stats row */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '28px' }}>
-          {[
-            { label: 'Available', value: available, color: 'var(--green)', icon: '🟢' },
-            { label: 'Occupied', value: occupied, color: '#ef4444', icon: '🔴' },
-            { label: 'Reserved', value: reserved, color: 'var(--amber)', icon: '🟡' },
-          ].map(s => (
-            <div key={s.label} className="stat-card">
-              <div style={{ fontSize: '36px', fontWeight: '900', color: s.color, fontFamily: 'JetBrains Mono' }}>{s.value}</div>
-              <div style={{ fontSize: '13px', color: 'var(--text-dim)', fontWeight: '600', marginTop: '4px' }}>{s.icon} {s.label}</div>
-            </div>
-          ))}
-        </div>
+        {/* Filter Toolbar */}
+        {/* Layout with Slot Grid & Booking Panel */}
+        <div className="lot-grid-layout">
+          {/* Main Slots Matrix via Subcomponent */}
+          <SlotGridMatrix
+            slots={slots}
+            floors={floors}
+            filterFloor={filterFloor}
+            setFilterFloor={setFilterFloor}
+            filterType={filterType}
+            setFilterType={setFilterType}
+            selectedSlot={selectedSlot}
+            onSelectSlot={setSelectedSlot}
+          />
 
-        {/* Legend + Filters */}
-        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginBottom: '24px', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-            {floors.map(f => (
-              <button key={f} onClick={() => setFilterFloor(filterFloor === String(f) ? 'all' : String(f))}
-                className={filterFloor === String(f) ? 'btn-primary' : 'btn-ghost'}
-                style={{ padding: '8px 16px', fontSize: '13px' }}>
-                Floor {f}
-              </button>
-            ))}
-          </div>
-          <div style={{ display: 'flex', gap: '12px' }}>
-            {['regular', 'compact', 'ev', 'handicapped'].map(t => (
-              <button key={t} onClick={() => setFilterType(filterType === t ? 'all' : t)}
-                className={filterType === t ? 'btn-primary' : 'btn-ghost'}
-                style={{ padding: '8px 14px', fontSize: '12px' }}>
-                {typeIcons[t]} {t}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', gap: '24px', alignItems: 'flex-start' }}>
-          {/* Slot Grid */}
-          <div style={{ flex: 1 }}>
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))',
-              gap: '10px',
-              padding: '24px',
-              background: 'var(--navy-card)',
-              borderRadius: '16px',
-              border: '1px solid var(--navy-border)'
-            }}>
-              {filtered.map(slot => {
-                const c = statusColors[slot.status];
-                const isSelected = selectedSlot?._id === slot._id;
-                return (
-                  <button
-                    key={slot._id}
-                    onClick={() => slot.status === 'available' ? setSelectedSlot(isSelected ? null : slot) : null}
-                    disabled={slot.status !== 'available'}
-                    style={{
-                      padding: '12px 8px', borderRadius: '10px',
-                      border: `2px solid ${isSelected ? '#fff' : c.border}`,
-                      background: isSelected ? c.border : c.bg,
-                      color: isSelected ? '#000' : c.text,
-                      cursor: slot.status === 'available' ? 'pointer' : 'default',
-                      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px',
-                      transition: 'all 0.2s',
-                      transform: isSelected ? 'scale(1.08)' : 'scale(1)',
-                      boxShadow: isSelected ? `0 0 20px ${c.border}` : 'none',
-                      minHeight: '70px'
-                    }}
-                  >
-                    <span style={{ fontSize: '16px' }}>{typeIcons[slot.type]}</span>
-                    <span style={{ fontSize: '11px', fontWeight: '700', fontFamily: 'JetBrains Mono' }}>{slot.slotNumber}</span>
-                    <span style={{ fontSize: '9px', fontWeight: '600', textTransform: 'uppercase', opacity: 0.8 }}>
-                      {slot.status === 'available' ? 'Free' : slot.status === 'locked' ? 'Locked' : slot.status}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Legend */}
-            <div style={{ display: 'flex', gap: '24px', marginTop: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
-              {[
-                { label: 'Available', color: 'var(--green)' },
-                { label: 'Occupied', color: '#ef4444' },
-                { label: 'Reserved', color: 'var(--amber)' },
-                { label: 'Locked', color: '#38bdf8' },
-              ].map(l => (
-                <div key={l.label} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: 'var(--text-dim)' }}>
-                  <span style={{ width: 12, height: 12, borderRadius: '3px', background: l.color }}></span>
-                  {l.label}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Booking panel */}
+          {/* Sticky Checkout Summary Panel */}
           {selectedSlot && (
-            <div className="card" style={{ width: '280px', flexShrink: 0, position: 'sticky', top: '80px', border: '1px solid rgba(0, 232, 122, 0.4)' }}>
-              <h3 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '16px', color: 'var(--green)' }}>
-                ✅ Slot Selected
-              </h3>
-              <div style={{ marginBottom: '16px', padding: '14px', background: 'var(--navy-light)', borderRadius: '10px' }}>
-                <div style={{ fontSize: '28px', fontWeight: '900', fontFamily: 'JetBrains Mono', color: 'var(--green)' }}>
-                  {selectedSlot.slotNumber}
+            <div className="checkout-drawer">
+              <div className="card" style={{ background: '#ffffff', border: '1.5px solid #2563eb', padding: '24px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#059669', fontSize: '12px', fontWeight: '700', textTransform: 'uppercase' }}>
+                  <IconCheck size={16} /> Slot Confirmed
                 </div>
-                <div style={{ color: 'var(--text-dim)', fontSize: '13px', marginTop: '4px' }}>
-                  Floor {selectedSlot.floor} • {typeIcons[selectedSlot.type]} {selectedSlot.type}
-                </div>
-              </div>
-              <div style={{ marginBottom: '16px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '14px' }}>
-                  <span style={{ color: 'var(--text-dim)' }}>Rate</span>
-                  <span style={{ fontWeight: '600' }}>{formatCurrency(pricing.price)}/hr</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px' }}>
-                  <span style={{ color: 'var(--text-dim)' }}>Pricing</span>
-                  <span className={`badge ${pricing.label === 'Peak' ? 'badge-red' : pricing.label === 'Off-Peak' ? 'badge-blue' : 'badge-green'}`}>
-                    {pricing.label} ({pricing.multiplier}x)
+
+                <div style={{ margin: '16px 0', padding: '16px', background: '#eff6ff', borderRadius: '8px', textAlign: 'center' }}>
+                  <span style={{ fontSize: '12px', color: '#64748b', textTransform: 'uppercase', fontWeight: '600' }}>
+                    Selected Bay
+                  </span>
+                  <div className="mono" style={{ fontSize: '32px', fontWeight: '800', color: '#2563eb' }}>
+                    {selectedSlot.slotNumber}
+                  </div>
+                  <span style={{ fontSize: '13px', color: '#475569', fontWeight: '500' }}>
+                    Level {selectedSlot.floor} • {selectedSlot.type.toUpperCase()}
                   </span>
                 </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px', fontSize: '13.5px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748b' }}>
+                    <span>Base Hourly Rate</span>
+                    <span style={{ fontWeight: '600', color: '#0f172a' }}>{formatCurrency(lot.pricePerHour)}/hr</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748b' }}>
+                    <span>Active Rate</span>
+                    <span style={{ fontWeight: '700', color: '#2563eb' }}>{formatCurrency(pricing?.price)}/hr</span>
+                  </div>
+                </div>
+
+                <button
+                  className="btn btn-primary"
+                  onClick={() => navigate(`/book/${id}`, { state: { slot: selectedSlot, lot, pricing } })}
+                  style={{ width: '100%', padding: '12px', fontSize: '14px' }}
+                >
+                  Proceed to Reservation
+                  <IconArrowRight size={16} />
+                </button>
               </div>
-              <button
-                className="btn-primary" style={{ width: '100%', justifyContent: 'center' }}
-                onClick={() => navigate(`/book/${id}`, { state: { slot: selectedSlot, lot, pricing } })}
-              >
-                Book This Slot →
-              </button>
             </div>
           )}
         </div>
       </div>
+
+      <style>{`
+        .lot-grid-layout {
+          display: grid;
+          grid-template-columns: 1fr ${selectedSlot ? '300px' : ''};
+          gap: 24px;
+          align-items: start;
+        }
+        @media (max-width: 860px) {
+          .lot-grid-layout {
+            grid-template-columns: 1fr;
+          }
+          .checkout-drawer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+            padding: 12px;
+            background: rgba(255,255,255,0.98);
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.1);
+            border-top: 1px solid #e2e8f0;
+          }
+        }
+      `}</style>
     </div>
   );
 }

@@ -4,7 +4,20 @@ import api from '../utils/api';
 import { formatCurrency } from '../utils/pricing';
 import { toast } from 'react-toastify';
 import { useAuth } from '../context/AuthContext';
+import {
+  IconArrowLeft,
+  IconClock,
+  IconCheck,
+  IconCreditCard,
+  IconShield,
+  IconCalendar,
+  IconCar
+} from '../components/Icons';
 
+/**
+ * Enterprise Booking & Payment Confirmation Page
+ * Responsive 2-column or stacked layout, pure white theme, zero emojis, verified locking
+ */
 export default function BookingPage() {
   const { id: lotId } = useParams();
   const { state } = useLocation();
@@ -19,42 +32,33 @@ export default function BookingPage() {
   const [startTime, setStartTime] = useState(defaultStart.toISOString().slice(0, 16));
   const [endTime, setEndTime] = useState(defaultEnd.toISOString().slice(0, 16));
   const [vehicleNumber, setVehicleNumber] = useState('');
-  const [step, setStep] = useState('details'); // details | payment
-  const [paymentMethod, setPaymentMethod] = useState('upi');
+  const [paymentMethod, setPaymentMethod] = useState('free_demo');
   const [loading, setLoading] = useState(false);
 
-  // Timer state - start immediately with 300s (5m) for best UX
+  // 5-minute checkout hold timer
   const [lockTimeLeft, setLockTimeLeft] = useState(300);
   const [lockedSlotId, setLockedSlotId] = useState(slot?._id || null);
   const lockAttemptedRef = useRef(false);
 
   useEffect(() => {
     if (!slot || lockAttemptedRef.current) return;
-
-    // Check if slot is already marked as locked in our state
-    if (lockedSlotId === slot._id && lockAttemptedRef.current) return;
-
     lockAttemptedRef.current = true;
 
     const lockSlot = async () => {
       try {
-        console.log('Attempting to lock slot...', slot._id);
         const response = await api.post('/parking/lock-slot', {
           slotId: slot._id,
-          userId: user?._id || 'guest'
+          userId: user?._id || 'guest-session'
         });
 
         if (response.data.success) {
-          console.log('Slot locked successfully');
           setLockedSlotId(slot._id);
           if (response.data.expiresIn) {
             setLockTimeLeft(response.data.expiresIn);
           }
         }
       } catch (error) {
-        console.error('Locking failed:', error);
-        toast.error(error.response?.data?.message || 'Slot is unavailable');
-        // If it's already locked by someone else, we must go back
+        toast.error(error.response?.data?.message || 'Slot hold failed. Please re-select.');
         if (error.response?.status === 400) {
           navigate(-1);
         }
@@ -62,7 +66,7 @@ export default function BookingPage() {
     };
 
     lockSlot();
-  }, [slot, navigate, user, lockedSlotId]);
+  }, [slot, navigate, user]);
 
   useEffect(() => {
     if (lockTimeLeft <= 0) return;
@@ -79,7 +83,7 @@ export default function BookingPage() {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [lockTimeLeft, lockedSlotId]);
+  }, [lockTimeLeft]);
 
   const handleAutoUnlock = async () => {
     if (!lockedSlotId) return;
@@ -87,10 +91,10 @@ export default function BookingPage() {
       await api.post('/parking/unlock-slot', { slotId: lockedSlotId });
       setLockedSlotId(null);
       setLockTimeLeft(0);
-      toast.info('Session expired. Slot released.');
+      toast.info('Session expired. The temporary slot hold was released.');
       navigate(-1);
     } catch (error) {
-      console.error('Failed to unlock:', error);
+      console.error('Failed to unlock slot:', error);
     }
   };
 
@@ -100,197 +104,285 @@ export default function BookingPage() {
     return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
   };
 
+  if (!slot || !lot) {
+    return (
+      <div style={{ minHeight: '100vh', background: '#f8fafc', paddingTop: '100px', textAlign: 'center' }}>
+        <p style={{ color: '#64748b', fontSize: '15px' }}>No active reservation payload detected.</p>
+        <button onClick={() => navigate('/dashboard')} className="btn btn-secondary" style={{ marginTop: '16px' }}>
+          Back to Directory
+        </button>
+      </div>
+    );
+  }
 
+  const durationHours = Math.max(1, Math.ceil((new Date(endTime) - new Date(startTime)) / 3600000));
+  const hourlyRate = pricing?.price || lot.pricePerHour;
+  const totalCost = hourlyRate * durationHours;
 
-  if (!slot || !lot) return (
-    <div style={{ minHeight: '100vh', background: 'var(--navy)', paddingTop: '100px', textAlign: 'center', color: 'var(--text-dim)' }}>
-      No booking data. <button onClick={() => navigate('/dashboard')} style={{ color: 'var(--green)', background: 'none', border: 'none', cursor: 'pointer' }}>Go back</button>
-    </div>
-  );
+  const handleBook = async (e) => {
+    e.preventDefault();
 
-  const duration = Math.max(1, Math.ceil((new Date(endTime) - new Date(startTime)) / 3600000));
-  const startHour = new Date(startTime).getHours();
-  const { price: hourlyRate, label: pricingLabel } = pricing || { price: lot.pricePerHour, label: 'Normal' };
-  const totalCost = hourlyRate * duration;
+    if (!vehicleNumber.trim()) {
+      toast.error('Please enter your vehicle registration plate number.');
+      return;
+    }
 
-  const handleBook = async () => {
-    if (!vehicleNumber.trim()) { toast.error('Enter vehicle number'); return; }
-    if (new Date(startTime) >= new Date(endTime)) { toast.error('End time must be after start time'); return; }
+    if (new Date(startTime) >= new Date(endTime)) {
+      toast.error('Booking departure time must be strictly after arrival time.');
+      return;
+    }
+
     setLoading(true);
     try {
       const res = await api.post('/bookings', {
-        slotId: slot._id, lotId, startTime, endTime, vehicleNumber, paymentMethod
+        slotId: slot._id,
+        lotId,
+        startTime,
+        endTime,
+        vehicleNumber: vehicleNumber.trim().toUpperCase(),
+        paymentMethod
       });
-      toast.success('Booking confirmed! 🎉');
+
+      toast.success('Reservation confirmed successfully.');
       navigate(`/booking-success/${res.data._id}`, { state: { booking: res.data } });
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Booking failed');
+      toast.error(err.response?.data?.message || 'Reservation failed.');
     } finally {
       setLoading(false);
     }
   };
 
+  const paymentOptions = [
+    { id: 'free_demo', title: 'Community Free Pass', desc: 'Complimentary pilot access program' },
+    { id: 'upi', title: 'UPI Quick Pay', desc: 'Instant verification via BHIM, GPay, PhonePe' },
+    { id: 'card', title: 'Corporate / Fleet Card', desc: 'Visa, MasterCard, RuPay' },
+    { id: 'netbanking', title: 'Net Banking Gateway', desc: 'Direct bank account transfer' }
+  ];
+
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--navy)', paddingTop: '80px', paddingBottom: '60px' }}>
-      <div style={{ maxWidth: 680, margin: '0 auto', padding: '0 24px' }}>
-        <button onClick={() => navigate(-1)} style={{
-          background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer',
-          fontSize: '14px', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '6px'
-        }}>← Back to Slot Selection</button>
+    <div style={{ minHeight: '100vh', background: '#f8fafc', paddingTop: '80px', paddingBottom: '60px' }}>
+      <div className="container" style={{ maxWidth: '780px' }}>
+        <button
+          onClick={() => navigate(-1)}
+          className="btn btn-ghost"
+          style={{ padding: '6px 12px', fontSize: '13px', marginBottom: '20px' }}
+        >
+          <IconArrowLeft size={15} />
+          Return to Slot Selection
+        </button>
 
-        <h1 style={{ fontSize: '32px', fontWeight: '800', marginBottom: '8px' }}>Confirm Booking</h1>
-        <p style={{ color: 'var(--text-dim)', marginBottom: '32px' }}>Review your details before confirming</p>
+        <h1 style={{ fontSize: '28px', fontWeight: '800', color: '#0f172a', letterSpacing: '-0.02em', marginBottom: '6px' }}>
+          Finalize Parking Reservation
+        </h1>
+        <p style={{ color: '#64748b', fontSize: '14px', marginBottom: '24px' }}>
+          Please verify reservation parameters and vehicle credentials before confirmation.
+        </p>
 
-        {/* Reservation Timer - FORCED VISIBILITY */}
-        {slot && lockTimeLeft > 0 && (
-          <div style={{
-            padding: '20px',
-            background: 'linear-gradient(90deg, rgba(0, 232, 122, 0.1) 0%, rgba(0, 180, 216, 0.1) 100%)',
-            border: `2px solid ${lockTimeLeft < 60 ? '#ef4444' : 'var(--green)'}`,
-            borderRadius: '16px',
-            marginBottom: '24px',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            boxShadow: lockTimeLeft < 60 ? '0 0 20px rgba(239, 68, 68, 0.3)' : '0 0 15px rgba(0, 232, 122, 0.1)',
-            animation: lockTimeLeft < 60 ? 'pulse 1s infinite' : 'none',
-            position: 'relative',
-            overflow: 'hidden'
-          }}>
-            <div style={{
-              position: 'absolute', top: 0, left: 0, width: `${(lockTimeLeft / 300) * 100}%`,
-              height: '3px', background: lockTimeLeft < 60 ? '#ef4444' : 'var(--green)',
-              transition: 'width 1s linear'
-            }} />
-
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                <span style={{ fontSize: '18px' }}>⏳</span>
-                <span style={{ fontSize: '13px', fontWeight: '800', color: 'var(--text)', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                  Slot Reserved
-                </span>
-                <span style={{ background: 'var(--green)', color: '#000', fontSize: '10px', fontWeight: '900', padding: '2px 6px', borderRadius: '4px' }}>LIVE</span>
+        {/* Temporary Hold Countdown Strip */}
+        {lockTimeLeft > 0 && (
+          <div
+            style={{
+              background: lockTimeLeft < 60 ? '#fef2f2' : '#ffffff',
+              border: `1.5px solid ${lockTimeLeft < 60 ? '#f87171' : '#bfdbfe'}`,
+              borderRadius: '10px',
+              padding: '14px 20px',
+              marginBottom: '24px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              boxShadow: 'var(--shadow-sm)'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div
+                style={{
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '8px',
+                  background: lockTimeLeft < 60 ? '#fee2e2' : '#eff6ff',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                <IconClock size={18} color={lockTimeLeft < 60 ? '#dc2626' : '#2563eb'} />
               </div>
-              <div style={{ color: lockTimeLeft < 60 ? '#ef4444' : 'var(--text-dim)', fontSize: '14px', fontWeight: '500' }}>
-                {lockTimeLeft < 60 ? '⚠️ FINAL SECONDS! Finish payment now.' : 'Your spot is secured. Complete payment to finalize.'}
+              <div>
+                <div style={{ fontSize: '14px', fontWeight: '700', color: '#0f172a' }}>
+                  Temporary Slot Hold Active
+                </div>
+                <div style={{ fontSize: '12px', color: lockTimeLeft < 60 ? '#dc2626' : '#64748b' }}>
+                  {lockTimeLeft < 60 ? 'Hurry! Final seconds before release.' : 'Spot is held exclusively for your checkout.'}
+                </div>
               </div>
             </div>
+
             <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: '36px', fontWeight: '900', fontFamily: 'JetBrains Mono', color: lockTimeLeft < 60 ? '#ef4444' : 'var(--green)', lineHeight: '1', textShadow: `0 0 10px ${lockTimeLeft < 60 ? 'rgba(239, 68, 68, 0.5)' : 'rgba(0, 232, 122, 0.5)'}` }}>
+              <div className="mono" style={{ fontSize: '24px', fontWeight: '800', color: lockTimeLeft < 60 ? '#dc2626' : '#2563eb' }}>
                 {formatTime(lockTimeLeft)}
               </div>
-              <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px', fontWeight: 'bold', letterSpacing: '1px' }}>MIN : SEC</div>
+              <div style={{ fontSize: '10px', color: '#94a3b8', fontWeight: '600', textTransform: 'uppercase' }}>
+                Time Remaining
+              </div>
             </div>
           </div>
         )}
 
-        <style>
-          {`
-            @keyframes pulse {
-              0% { opacity: 1; }
-              50% { opacity: 0.6; }
-              100% { opacity: 1; }
-            }
-          `}
-        </style>
-
-        {/* Slot summary */}
-        <div className="card" style={{ marginBottom: '20px', border: '1px solid rgba(0, 232, 122, 0.3)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        {/* Facility & Bay Confirmation Card */}
+        <div className="card" style={{ marginBottom: '20px', padding: '20px 24px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
             <div>
-              <div style={{ fontSize: '13px', color: 'var(--text-muted)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>
-                Selected Slot
+              <div style={{ fontSize: '12px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase' }}>
+                Allocated Bay
               </div>
-              <div style={{ fontSize: '28px', fontWeight: '900', fontFamily: 'JetBrains Mono', color: 'var(--green)' }}>
-                {slot.slotNumber}
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px', marginTop: '2px' }}>
+                <span className="mono" style={{ fontSize: '28px', fontWeight: '800', color: '#2563eb' }}>
+                  {slot.slotNumber}
+                </span>
+                <span style={{ fontSize: '14px', color: '#475569', fontWeight: '500' }}>
+                  Level {slot.floor} • {slot.type.toUpperCase()}
+                </span>
               </div>
-              <div style={{ color: 'var(--text-dim)', fontSize: '14px', marginTop: '4px' }}>
-                Floor {slot.floor} • {slot.type} • {lot.name}
-              </div>
-              {pricing?.isSurge && (
-                <div style={{ marginTop: '8px', display: 'inline-block', padding: '4px 10px', background: '#ef4444', color: '#fff', borderRadius: '6px', fontSize: '10px', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                  ⚡ Surge Price Active
-                </div>
-              )}
+              <div style={{ fontSize: '13px', color: '#64748b', marginTop: '2px' }}>{lot.name}</div>
             </div>
-            <div style={{ fontSize: '24px', fontWeight: '800', color: pricing?.isSurge ? '#ef4444' : 'var(--accent)', fontFamily: 'JetBrains Mono', marginTop: '8px' }}>
-              {formatCurrency(hourlyRate)}/hr
+
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ fontSize: '20px', fontWeight: '800', color: '#0f172a' }}>
+                {formatCurrency(hourlyRate)} / hr
+              </div>
+              <span className={`badge ${pricing?.isSurge ? 'badge-red' : 'badge-green'}`} style={{ marginTop: '4px' }}>
+                {pricing?.label} Rate
+              </span>
             </div>
           </div>
         </div>
 
-        {/* Booking details */}
-        <div className="card" style={{ marginBottom: '20px' }}>
-          <h3 style={{ fontSize: '16px', fontWeight: '700', marginBottom: '20px' }}>Booking Details</h3>
+        {/* Booking Form Card */}
+        <form onSubmit={handleBook}>
+          <div className="card" style={{ marginBottom: '20px', padding: '24px' }}>
+            <h2 style={{ fontSize: '16px', fontWeight: '700', color: '#0f172a', marginBottom: '18px' }}>
+              Reservation Interval & Vehicle Info
+            </h2>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
-            <div>
-              <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--text-muted)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                Start Time
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                gap: '16px',
+                marginBottom: '18px'
+              }}
+            >
+              <div>
+                <label className="input-label" htmlFor="start-time">
+                  Arrival Timestamp
+                </label>
+                <input
+                  id="start-time"
+                  className="input"
+                  type="datetime-local"
+                  value={startTime}
+                  onChange={(e) => setStartTime(e.target.value)}
+                  min={new Date().toISOString().slice(0, 16)}
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="input-label" htmlFor="end-time">
+                  Departure Timestamp
+                </label>
+                <input
+                  id="end-time"
+                  className="input"
+                  type="datetime-local"
+                  value={endTime}
+                  onChange={(e) => setEndTime(e.target.value)}
+                  min={startTime}
+                  required
+                />
+              </div>
+            </div>
+
+            <div style={{ marginBottom: '20px' }}>
+              <label className="input-label" htmlFor="vehicle-number">
+                Vehicle Registration Plate
               </label>
-              <input className="input" type="datetime-local" value={startTime}
-                onChange={e => setStartTime(e.target.value)} min={new Date().toISOString().slice(0, 16)} />
+              <input
+                id="vehicle-number"
+                className="input mono"
+                type="text"
+                value={vehicleNumber}
+                onChange={(e) => setVehicleNumber(e.target.value.toUpperCase())}
+                placeholder="RJ14 AB 1234"
+                style={{ fontSize: '16px', letterSpacing: '1px' }}
+                required
+              />
             </div>
-            <div>
-              <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--text-muted)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                End Time
-              </label>
-              <input className="input" type="datetime-local" value={endTime}
-                onChange={e => setEndTime(e.target.value)} min={startTime} />
+
+            {/* Price Summary Breakdown */}
+            <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13.5px', color: '#64748b', marginBottom: '8px' }}>
+                <span>Duration</span>
+                <span style={{ fontWeight: '600', color: '#0f172a' }}>{durationHours} {durationHours === 1 ? 'Hour' : 'Hours'}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13.5px', color: '#64748b', marginBottom: '8px' }}>
+                <span>Rate Factor</span>
+                <span style={{ fontWeight: '600', color: '#0f172a' }}>{pricing?.multiplier || 1.0}x</span>
+              </div>
+              <div style={{ height: '1px', background: '#e2e8f0', margin: '10px 0' }} />
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '15px', fontWeight: '700', color: '#0f172a' }}>Total Amount</span>
+                <span style={{ fontSize: '22px', fontWeight: '800', color: '#2563eb' }}>
+                  {formatCurrency(totalCost)}
+                </span>
+              </div>
             </div>
           </div>
 
-          <div style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--text-muted)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-              Vehicle Number
-            </label>
-            <input className="input mono" type="text" value={vehicleNumber}
-              onChange={e => setVehicleNumber(e.target.value.toUpperCase())}
-              placeholder="RJ14 XX 1234" style={{ letterSpacing: '2px', fontSize: '18px' }} />
-          </div>
+          {/* Payment Method Selector */}
+          <div className="card" style={{ marginBottom: '24px', padding: '24px' }}>
+            <h2 style={{ fontSize: '16px', fontWeight: '700', color: '#0f172a', marginBottom: '16px' }}>
+              Select Payment Authorization
+            </h2>
 
-          {/* Duration & cost */}
-          <div style={{ padding: '16px', background: 'var(--navy-light)', borderRadius: '10px', border: '1px solid var(--navy-border)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '14px' }}>
-              <span style={{ color: 'var(--text-dim)' }}>Rate ({pricingLabel})</span>
-              <span style={{ fontWeight: '600', color: pricing?.isSurge ? '#ef4444' : 'var(--text)' }}>{formatCurrency(hourlyRate)}/hr</span>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '12px' }}>
+              {paymentOptions.map((opt) => {
+                const isSelected = paymentMethod === opt.id;
+                return (
+                  <div
+                    key={opt.id}
+                    onClick={() => setPaymentMethod(opt.id)}
+                    style={{
+                      padding: '14px 16px',
+                      borderRadius: '8px',
+                      border: `1.5px solid ${isSelected ? '#2563eb' : '#e2e8f0'}`,
+                      background: isSelected ? '#eff6ff' : '#ffffff',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                      <span style={{ fontSize: '14px', fontWeight: '700', color: isSelected ? '#2563eb' : '#0f172a' }}>
+                        {opt.title}
+                      </span>
+                      {isSelected && <IconCheck size={16} color="#2563eb" />}
+                    </div>
+                    <span style={{ fontSize: '12px', color: '#64748b' }}>{opt.desc}</span>
+                  </div>
+                );
+              })}
             </div>
-            <div style={{ height: 1, background: 'var(--navy-border)', margin: '12px 0' }} />
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '18px', fontWeight: '800' }}>
-              <span>Total</span>
-              <span style={{ color: 'var(--green)', fontFamily: 'JetBrains Mono' }}>{formatCurrency(totalCost)}</span>
-            </div>
           </div>
-        </div>
 
-        {/* Payment */}
-        <div className="card" style={{ marginBottom: '24px' }}>
-          <h3 style={{ fontSize: '16px', fontWeight: '700', marginBottom: '20px' }}>Payment Method</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
-            {[
-              { id: 'upi', icon: '🏧', label: 'UPI', sub: 'GPay, PhonePe, Paytm' },
-              { id: 'card', icon: '💳', label: 'Card', sub: 'Debit / Credit' },
-              { id: 'netbanking', icon: '🏦', label: 'Net Banking', sub: 'All major banks' },
-              { id: 'wallet', icon: '👛', label: 'Wallet', sub: 'Paytm, Mobikwik' },
-            ].map(m => (
-              <button key={m.id} onClick={() => setPaymentMethod(m.id)} style={{
-                padding: '16px', borderRadius: '12px', cursor: 'pointer', textAlign: 'left',
-                background: paymentMethod === m.id ? 'rgba(0, 232, 122, 0.1)' : 'var(--navy-light)',
-                border: `2px solid ${paymentMethod === m.id ? 'var(--green)' : 'var(--navy-border)'}`,
-                color: 'var(--text)', transition: 'all 0.2s', fontFamily: 'Outfit'
-              }}>
-                <div style={{ fontSize: '24px', marginBottom: '6px' }}>{m.icon}</div>
-                <div style={{ fontWeight: '700', fontSize: '15px' }}>{m.label}</div>
-                <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>{m.sub}</div>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <button className="btn-primary" onClick={handleBook} disabled={loading}
-          style={{ width: '100%', justifyContent: 'center', fontSize: '17px', padding: '16px' }}>
-          {loading ? '⏳ Processing...' : `✅ Pay ${formatCurrency(totalCost)} & Confirm`}
-        </button>
+          <button
+            type="submit"
+            className="btn btn-primary"
+            disabled={loading}
+            style={{ width: '100%', padding: '14px', fontSize: '15px' }}
+          >
+            {loading ? 'Processing Reservation...' : `Confirm & Authorize ${formatCurrency(totalCost)}`}
+          </button>
+        </form>
       </div>
     </div>
   );

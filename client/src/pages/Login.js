@@ -2,7 +2,21 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'react-toastify';
+import {
+  IconCar,
+  IconPhone,
+  IconShield,
+  IconArrowRight,
+  IconArrowLeft,
+  IconCheck,
+  IconUser,
+  IconAlert
+} from '../components/Icons';
 
+/**
+ * Enterprise Authentication Page
+ * Pure professional white theme, responsive design, no emojis, clean OTP UX
+ */
 export default function Login() {
   const [step, setStep] = useState('phone'); // phone | otp | name
   const [phone, setPhone] = useState('');
@@ -15,18 +29,23 @@ export default function Login() {
 
   const handleSendOTP = async (e) => {
     e.preventDefault();
-    if (!/^[6-9]\d{9}$/.test(phone)) {
-      toast.error('Enter a valid 10-digit Indian mobile number');
+    const cleanPhone = phone.trim();
+
+    if (!/^[6-9]\d{9}$/.test(cleanPhone)) {
+      toast.error('Please enter a valid 10-digit Indian mobile number.');
       return;
     }
+
     setLoading(true);
     try {
-      const res = await sendOTP(phone);
-      if (res.demoOtp) setDemoOtp(res.demoOtp);
-      toast.success('OTP sent successfully!');
+      const res = await sendOTP(cleanPhone);
+      if (res.demoOtp) {
+        setDemoOtp(res.demoOtp);
+      }
+      toast.success('Authentication code dispatched.');
       setStep('otp');
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to send OTP');
+      toast.error(err.response?.data?.message || 'Unable to send OTP. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -34,15 +53,25 @@ export default function Login() {
 
   const handleVerifyOTP = async (e) => {
     e.preventDefault();
-    if (otp.length !== 6) { toast.error('Enter 6-digit OTP'); return; }
+    const cleanOtp = otp.trim();
+
+    if (cleanOtp.length !== 6) {
+      toast.error('Please enter the full 6-digit verification code.');
+      return;
+    }
+
     setLoading(true);
     try {
-      const res = await verifyOTP(phone, otp);
-      if (res.requireName) { setStep('name'); setLoading(false); return; }
-      toast.success(`Welcome${res.user.name ? ', ' + res.user.name.split(' ')[0] : ''}!`);
+      const res = await verifyOTP(phone.trim(), cleanOtp);
+      if (res.requireName) {
+        setStep('name');
+        setLoading(false);
+        return;
+      }
+      toast.success(`Authenticated successfully as ${res.user.name || 'User'}`);
       navigate(res.user.role === 'admin' ? '/admin' : '/dashboard');
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Invalid OTP');
+      toast.error(err.response?.data?.message || 'Invalid or expired verification code.');
     } finally {
       setLoading(false);
     }
@@ -50,131 +79,250 @@ export default function Login() {
 
   const handleSetName = async (e) => {
     e.preventDefault();
-    if (!name.trim()) { toast.error('Enter your name'); return; }
+    if (!name.trim()) {
+      toast.error('Please enter your full legal name.');
+      return;
+    }
+
     setLoading(true);
     try {
-      const res = await verifyOTP(phone, otp, name.trim());
-      toast.success(`Welcome, ${res.user.name}!`);
+      const res = await verifyOTP(phone.trim(), otp.trim(), name.trim());
+      toast.success(`Welcome to UrbanPark, ${res.user.name}`);
       navigate('/dashboard');
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Something went wrong');
+      toast.error(err.response?.data?.message || 'Failed to complete profile registration.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div style={{
-      minHeight: '100vh', background: 'var(--navy)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      padding: '24px', position: 'relative', overflow: 'hidden'
-    }} className="grid-bg">
-      <div style={{
-        position: 'absolute', top: '30%', left: '50%', transform: 'translate(-50%, -50%)',
-        width: 500, height: 500, borderRadius: '50%',
-        background: 'radial-gradient(circle, rgba(16, 185, 129, 0.06) 0%, transparent 70%)',
-        pointerEvents: 'none'
-      }} />
+    <div
+      style={{
+        minHeight: '100vh',
+        background: '#f8fafc',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '32px 16px',
+        paddingTop: '80px'
+      }}
+    >
+      <div
+        style={{
+          width: '100%',
+          maxWidth: '440px',
+          margin: '0 auto'
+        }}
+      >
+        {/* Header Branding */}
+        <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+          <div
+            style={{
+              width: '48px',
+              height: '48px',
+              borderRadius: '12px',
+              background: '#2563eb',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#ffffff',
+              marginBottom: '16px',
+              boxShadow: '0 4px 12px rgba(37, 99, 235, 0.25)'
+            }}
+          >
+            <IconCar size={26} color="#ffffff" />
+          </div>
 
-      <div style={{
-        width: '100%', maxWidth: 440, position: 'relative', zIndex: 1,
-        animation: 'fadeInUp 0.5s ease'
-      }}>
-        {/* Logo */}
-        <div style={{ textAlign: 'center', marginBottom: '40px' }}>
-          <div style={{
-            width: 56, height: 56, borderRadius: '16px',
-            background: '#10b981',
-            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: '28px', fontWeight: '900', color: '#fff', marginBottom: '16px'
-          }}>U</div>
-          <h1 style={{ fontSize: '28px', fontWeight: '800', color: '#fff' }}>
-            Welcome to <span style={{ color: 'var(--green)' }}>UrbanPark</span>
+          <h1
+            style={{
+              fontSize: '24px',
+              fontWeight: '800',
+              color: '#0f172a',
+              letterSpacing: '-0.02em',
+              marginBottom: '8px'
+            }}
+          >
+            {step === 'phone' && 'Sign in to UrbanPark'}
+            {step === 'otp' && 'Verify Phone Number'}
+            {step === 'name' && 'Complete Profile'}
           </h1>
-          <p style={{ color: 'var(--text-muted)', marginTop: '8px', fontSize: '15px' }}>
-            {step === 'phone' && 'Welcome Dear Customer! Enter your mobile number to continue'}
-            {step === 'otp' && `Enter the OTP sent to +91 ${phone}`}
-            {step === 'name' && "You're new here! What's your name?"}
+
+          <p style={{ fontSize: '14px', color: '#64748b', lineHeight: 1.5 }}>
+            {step === 'phone' && 'Access smart parking booking and live slot status.'}
+            {step === 'otp' && `Enter the 6-digit passcode sent to +91 ${phone}`}
+            {step === 'name' && 'Please provide your name for parking verification.'}
           </p>
         </div>
 
-        {/* Card */}
-        <div className="card" style={{ padding: '36px' }}>
+        {/* Authentication Card */}
+        <div className="card" style={{ padding: '32px', background: '#ffffff' }}>
           {step === 'phone' && (
-            <form onSubmit={handleSendOTP}>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: 'var(--text-dim)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                Mobile Number
-              </label>
-              <div style={{ display: 'flex', gap: '10px', marginBottom: '24px' }}>
-                <div style={{
-                  padding: '12px 16px', background: 'var(--navy-light)',
-                  border: '1px solid var(--navy-border)', borderRadius: '10px',
-                  fontSize: '15px', color: 'var(--text-dim)', fontWeight: '600', whiteSpace: 'nowrap'
-                }}>🇮🇳 +91</div>
-                <input
-                  className="input" type="tel" maxLength={10} value={phone}
-                  onChange={e => setPhone(e.target.value.replace(/\D/g, ''))}
-                  placeholder="98765 43210" autoFocus
-                />
+            <form onSubmit={handleSendOTP} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <div>
+                <label className="input-label" htmlFor="phone-input">
+                  Mobile Phone Number
+                </label>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <div
+                    style={{
+                      padding: '10px 14px',
+                      background: '#f1f5f9',
+                      border: '1px solid #e2e8f0',
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      color: '#475569',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px'
+                    }}
+                  >
+                    +91
+                  </div>
+                  <input
+                    id="phone-input"
+                    className="input"
+                    type="tel"
+                    maxLength={10}
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
+                    placeholder="98765 43210"
+                    autoFocus
+                  />
+                </div>
+                <span style={{ display: 'block', fontSize: '12px', color: '#94a3b8', marginTop: '6px' }}>
+                  Standard Indian 10-digit mobile number
+                </span>
               </div>
-              <button className="btn-primary" type="submit" disabled={loading} style={{ width: '100%', justifyContent: 'center' }}>
-                {loading ? '⏳ Sending...' : 'Send OTP →'}
+
+              <button
+                className="btn btn-primary"
+                type="submit"
+                disabled={loading || phone.length < 10}
+                style={{ width: '100%', padding: '12px', fontSize: '15px' }}
+              >
+                {loading ? 'Transmitting Code...' : 'Send Verification Code'}
+                <IconArrowRight size={16} />
               </button>
             </form>
           )}
 
           {step === 'otp' && (
-            <form onSubmit={handleVerifyOTP}>
+            <form onSubmit={handleVerifyOTP} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
               {demoOtp && (
-                <div style={{
-                  padding: '12px 16px', borderRadius: '10px', marginBottom: '20px',
-                  background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.3)',
-                  color: 'var(--amber)', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px'
-                }}>
-                  🔧 <strong>Dev Mode OTP:</strong>&nbsp;
-                  <span className="mono" style={{ fontSize: '16px', fontWeight: '700' }}>{demoOtp}</span>
+                <div
+                  style={{
+                    padding: '12px 14px',
+                    borderRadius: '8px',
+                    background: '#eff6ff',
+                    border: '1px solid #bfdbfe',
+                    color: '#1e40af',
+                    fontSize: '13px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between'
+                  }}
+                >
+                  <span style={{ fontWeight: '500' }}>Testing Passcode:</span>
+                  <span className="mono" style={{ fontWeight: '700', fontSize: '15px' }}>
+                    {demoOtp}
+                  </span>
                 </div>
               )}
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: 'var(--text-dim)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                Enter 6-Digit OTP
-              </label>
-              <input
-                className="input mono" type="text" maxLength={6} value={otp}
-                onChange={e => setOtp(e.target.value.replace(/\D/g, ''))}
-                placeholder="••••••" autoFocus
-                style={{ fontSize: '24px', letterSpacing: '8px', textAlign: 'center', marginBottom: '24px' }}
-              />
-              <button className="btn-primary" type="submit" disabled={loading} style={{ width: '100%', justifyContent: 'center' }}>
-                {loading ? '⏳ Verifying...' : 'Verify OTP ✓'}
+
+              <div>
+                <label className="input-label" htmlFor="otp-input" style={{ textAlign: 'center' }}>
+                  Enter 6-Digit Passcode
+                </label>
+                <input
+                  id="otp-input"
+                  className="input mono"
+                  type="text"
+                  maxLength={6}
+                  value={otp}
+                  onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
+                  placeholder="000000"
+                  autoFocus
+                  style={{
+                    fontSize: '24px',
+                    letterSpacing: '10px',
+                    textAlign: 'center',
+                    padding: '14px 10px'
+                  }}
+                />
+              </div>
+
+              <button
+                className="btn btn-primary"
+                type="submit"
+                disabled={loading || otp.length !== 6}
+                style={{ width: '100%', padding: '12px', fontSize: '15px' }}
+              >
+                {loading ? 'Verifying Code...' : 'Verify & Continue'}
+                <IconCheck size={16} />
               </button>
-              <button type="button" onClick={() => { setStep('phone'); setOtp(''); }}
-                style={{ width: '100%', marginTop: '12px', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '14px' }}>
-                ← Change Number
+
+              <button
+                type="button"
+                onClick={() => {
+                  setStep('phone');
+                  setOtp('');
+                }}
+                className="btn btn-ghost"
+                style={{ width: '100%', fontSize: '13px' }}
+              >
+                <IconArrowLeft size={14} />
+                Modify Mobile Number
               </button>
             </form>
           )}
 
           {step === 'name' && (
-            <form onSubmit={handleSetName}>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: 'var(--text-dim)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                Your Full Name
-              </label>
-              <input
-                className="input" type="text" value={name}
-                onChange={e => setName(e.target.value)}
-                placeholder="e.g. Rahul Sharma" autoFocus
-                style={{ marginBottom: '24px' }}
-              />
-              <button className="btn-primary" type="submit" disabled={loading} style={{ width: '100%', justifyContent: 'center' }}>
-                {loading ? '⏳ Setting up...' : 'Complete Setup →'}
+            <form onSubmit={handleSetName} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <div>
+                <label className="input-label" htmlFor="name-input">
+                  Full Name
+                </label>
+                <input
+                  id="name-input"
+                  className="input"
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="e.g. Raghav Sharma"
+                  autoFocus
+                />
+              </div>
+
+              <button
+                className="btn btn-primary"
+                type="submit"
+                disabled={loading || !name.trim()}
+                style={{ width: '100%', padding: '12px', fontSize: '15px' }}
+              >
+                {loading ? 'Completing Registration...' : 'Complete Profile'}
+                <IconArrowRight size={16} />
               </button>
             </form>
           )}
         </div>
 
-        <p style={{ textAlign: 'center', marginTop: '24px', color: 'var(--text-muted)', fontSize: '13px' }}>
-          🔒 Secure OTP authentication. No password needed.
-        </p>
+        {/* Security Assurance Footer */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '8px',
+            marginTop: '24px',
+            color: '#64748b',
+            fontSize: '13px'
+          }}
+        >
+          <IconShield size={16} color="#059669" />
+          <span>Encrypted cryptographic session authentication</span>
+        </div>
       </div>
     </div>
   );

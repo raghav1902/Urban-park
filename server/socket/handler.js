@@ -32,8 +32,10 @@ module.exports = (io) => {
         const changedSlots = [];
         
         for (let i = 0; i < numChanges; i++) {
+          if (!slots.length) continue;
           const randomSlot = slots[Math.floor(Math.random() * slots.length)];
-          if (!randomSlot || randomSlot.status === 'reserved') continue;
+          // Never modify slots that are reserved or currently locked by a customer in checkout
+          if (!randomSlot || ['reserved', 'locked'].includes(randomSlot.status)) continue;
           
           const newStatus = randomSlot.status === 'available' ? 
             (Math.random() > 0.7 ? 'occupied' : 'available') : 

@@ -40,7 +40,7 @@ const SLOT_STATUSES = ['available', 'available', 'available', 'available', 'occu
 
 async function seed() {
   try {
-    await mongoose.connect(process.env.MONGO_URI);
+    await mongoose.connect(process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/smart-parking');
     console.log('✅ Connected to MongoDB');
 
     // Clear existing data

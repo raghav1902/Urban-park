@@ -17,8 +17,12 @@ import AdminBookings from './pages/AdminBookings';
 const PrivateRoute = ({ children, adminOnly }) => {
   const { user, loading } = useAuth();
   if (loading) return (
-    <div style={{ minHeight: '100vh', background: 'var(--navy)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ fontSize: '48px', animation: 'float 1s ease-in-out infinite' }}>🅿️</div>
+    <div style={{ minHeight: '100vh', background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{
+        width: '36px', height: '36px',
+        border: '3px solid #e2e8f0', borderTopColor: '#2563eb',
+        borderRadius: '50%', animation: 'spin 0.8s linear infinite'
+      }} />
     </div>
   );
   if (!user) return <Navigate to="/login" />;
@@ -54,8 +58,8 @@ function App() {
         <AppRoutes />
         <ToastContainer
           position="top-right" autoClose={3000} hideProgressBar={false}
-          toastStyle={{ background: '#111d35', border: '1px solid #1a2d4a', color: '#e2e8f0' }}
-          theme="dark"
+          toastStyle={{ background: '#ffffff', border: '1px solid #e2e8f0', color: '#0f172a', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}
+          theme="light"
         />
       </AuthProvider>
     </BrowserRouter>

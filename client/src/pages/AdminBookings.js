@@ -1,139 +1,240 @@
 import React, { useEffect, useState } from 'react';
 import api from '../utils/api';
-import { formatCurrency } from '../utils/pricing';
+import { formatCurrency, formatDate, formatTime } from '../utils/pricing';
 import { toast } from 'react-toastify';
+import {
+  IconCalendar,
+  IconSearch,
+  IconFilter,
+  IconShield,
+  IconCar
+} from '../components/Icons';
 
+const STATUS_BADGES = {
+  confirmed: 'badge-green',
+  active: 'badge-blue',
+  pending: 'badge-amber',
+  completed: 'badge-gray',
+  cancelled: 'badge-red'
+};
+
+/**
+ * Enterprise Global Bookings Administration
+ * Completely responsive, 100% white theme, clean filtering and zero emojis
+ */
 export default function AdminBookings() {
-    const [bookings, setBookings] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [filter, setFilter] = useState('all');
+  const [bookings, setBookings] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState('all');
+  const [searchTerm, setSearchTerm] = useState('');
 
-    useEffect(() => {
-        fetchBookings();
-    }, []);
+  useEffect(() => {
+    fetchBookings();
+  }, []);
 
-    const fetchBookings = async () => {
-        try {
-            const res = await api.get('/admin/bookings');
-            setBookings(res.data);
-        } catch (err) {
-            console.error(err);
-            toast.error('Failed to load bookings');
-        } finally {
-            setLoading(false);
-        }
-    };
+  const fetchBookings = async () => {
+    try {
+      const res = await api.get('/admin/bookings');
+      setBookings(res.data);
+    } catch (err) {
+      console.error('Failed to load global bookings:', err);
+      toast.error('Failed to load platform reservations.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    const handleUpdateStatus = async (id, status) => {
-        try {
-            await api.put(`/admin/bookings/${id}/status`, { status });
-            setBookings(prev => prev.map(b => b._id === id ? { ...b, status } : b));
-            toast.success(`Booking marked as ${status}`);
-        } catch (err) {
-            toast.error(err.response?.data?.message || 'Update failed');
-        }
-    };
+  const filteredBookings = bookings.filter((b) => {
+    const matchesFilter = filter === 'all' || b.status === filter;
+    const matchesSearch =
+      !searchTerm ||
+      b.vehicleNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      b.userId?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      b.lotId?.name?.toLowerCase().includes(searchTerm.toLowerCase());
+    return matchesFilter && matchesSearch;
+  });
 
-    const filteredBookings = bookings.filter(b =>
-        filter === 'all' || b.status === filter
-    );
-
-    const STATUS_COLORS = {
-        confirmed: '#00e87a',
-        pending: '#f59e0b',
-        active: '#00d4ff',
-        completed: '#64748b',
-        cancelled: '#ef4444'
-    };
-
-    return (
-        <div style={{ minHeight: '100vh', background: 'var(--navy)', paddingTop: '80px', paddingBottom: '60px' }}>
-            <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 24px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '32px' }}>
-                    <div>
-                        <h1 style={{ fontSize: '32px', fontWeight: '800', marginBottom: '8px' }}>
-                            All <span style={{ color: 'var(--green)' }}>Bookings</span>
-                        </h1>
-                        <p style={{ color: 'var(--text-dim)' }}>Manage and monitor all parking reservations</p>
-                    </div>
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                        {['all', 'confirmed', 'active', 'completed', 'cancelled'].map(f => (
-                            <button
-                                key={f}
-                                onClick={() => setFilter(f)}
-                                className={filter === f ? 'btn-primary' : 'btn-ghost'}
-                                style={{ padding: '6px 12px', fontSize: '13px', textTransform: 'capitalize' }}
-                            >
-                                {f}
-                            </button>
-                        ))}
-                    </div>
-                </div>
-
-                {loading ? (
-                    <div style={{ display: 'grid', gap: '16px' }}>
-                        {[1, 2, 3, 4, 5].map(i => <div key={i} className="skeleton" style={{ height: 60 }} />)}
-                    </div>
-                ) : (
-                    <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-                        <div style={{ overflowX: 'auto' }}>
-                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
-                                <thead>
-                                    <tr style={{ background: 'rgba(26, 45, 74, 0.3)' }}>
-                                        {['Booking ID', 'User', 'Parking Lot', 'Slot', 'Time Window', 'Amount', 'Status'].map(h => (
-                                            <th key={h} style={{ padding: '16px', textAlign: 'left', color: 'var(--text-muted)', fontWeight: '600', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '1px solid var(--navy-border)' }}>
-                                                {h}
-                                            </th>
-                                        ))}
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {filteredBookings.length === 0 ? (
-                                        <tr>
-                                            <td colSpan="7" style={{ padding: '40px', textAlign: 'center', color: 'var(--text-dim)' }}>
-                                                No bookings found with status: <strong>{filter}</strong>
-                                            </td>
-                                        </tr>
-                                    ) : filteredBookings.map(b => (
-                                        <tr key={b._id} style={{ borderBottom: '1px solid rgba(26,45,74,0.5)', transition: 'background 0.2s' }}>
-                                            <td style={{ padding: '16px', fontFamily: 'JetBrains Mono', fontSize: '12px', color: 'var(--text-dim)' }}>
-                                                #{b._id.slice(-6).toUpperCase()}
-                                            </td>
-                                            <td style={{ padding: '16px' }}>
-                                                <div style={{ fontWeight: '600' }}>{b.userId?.name || 'N/A'}</div>
-                                                <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontFamily: 'JetBrains Mono' }}>{b.userId?.phone}</div>
-                                            </td>
-                                            <td style={{ padding: '16px', color: 'var(--text-dim)' }}>{b.lotId?.name}</td>
-                                            <td style={{ padding: '16px' }}>
-                                                <div style={{ fontFamily: 'JetBrains Mono', color: 'var(--green)', fontWeight: '700' }}>
-                                                    {b.slotId?.slotNumber || '—'}
-                                                </div>
-                                                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Floor {b.slotId?.floor}</div>
-                                            </td>
-                                            <td style={{ padding: '16px', color: 'var(--text-dim)', fontSize: '12px' }}>
-                                                <div>{new Date(b.startTime).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</div>
-                                                <div style={{ color: 'var(--text-muted)' }}>— {new Date(b.endTime).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</div>
-                                            </td>
-                                            <td style={{ padding: '16px', fontWeight: '700', color: 'var(--accent)', fontFamily: 'JetBrains Mono' }}>
-                                                {formatCurrency(b.totalCost)}
-                                            </td>
-                                            <td style={{ padding: '16px' }}>
-                                                <span className={`badge`} style={{
-                                                    background: `${STATUS_COLORS[b.status]}20`,
-                                                    color: STATUS_COLORS[b.status],
-                                                    textTransform: 'capitalize'
-                                                }}>
-                                                    {b.status}
-                                                </span>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                )}
+  return (
+    <div style={{ minHeight: '100vh', background: '#f8fafc', paddingTop: '80px', paddingBottom: '60px' }}>
+      <div className="container">
+        {/* Header Bar */}
+        <div
+          style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            justifyContent: 'space-between',
+            alignItems: 'flex-end',
+            gap: '16px',
+            marginBottom: '28px'
+          }}
+        >
+          <div>
+            <div
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                fontSize: '12px',
+                fontWeight: '700',
+                color: '#2563eb',
+                textTransform: 'uppercase',
+                letterSpacing: '0.04em',
+                marginBottom: '4px'
+              }}
+            >
+              Registry Records
             </div>
+            <h1 style={{ fontSize: '28px', fontWeight: '800', color: '#0f172a', letterSpacing: '-0.02em' }}>
+              Platform Reservations Ledger
+            </h1>
+            <p style={{ color: '#64748b', fontSize: '15px', marginTop: '2px' }}>
+              Comprehensive log of all citizen parking reservations across Jaipur.
+            </p>
+          </div>
+
+          {/* Search Input */}
+          <div style={{ width: '100%', maxWidth: '320px', position: 'relative' }}>
+            <div
+              style={{
+                position: 'absolute',
+                left: '12px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                color: '#94a3b8',
+                display: 'flex',
+                alignItems: 'center'
+              }}
+            >
+              <IconSearch size={16} />
+            </div>
+            <input
+              className="input"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search vehicle, driver or lot..."
+              style={{ paddingLeft: '38px', height: '40px', fontSize: '13.5px' }}
+            />
+          </div>
         </div>
-    );
+
+        {/* Status Filter Tab Group */}
+        <div
+          style={{
+            display: 'flex',
+            gap: '8px',
+            flexWrap: 'wrap',
+            marginBottom: '20px',
+            background: '#ffffff',
+            padding: '10px 14px',
+            borderRadius: '10px',
+            border: '1px solid #e2e8f0'
+          }}
+        >
+          {['all', 'confirmed', 'active', 'completed', 'cancelled'].map((tab) => {
+            const isActive = filter === tab;
+            return (
+              <button
+                key={tab}
+                onClick={() => setFilter(tab)}
+                className={isActive ? 'btn btn-primary' : 'btn btn-secondary'}
+                style={{
+                  padding: '6px 14px',
+                  fontSize: '13px',
+                  textTransform: 'capitalize'
+                }}
+              >
+                {tab === 'all' ? 'All Sessions' : tab}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Data Table */}
+        {loading ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="card" style={{ height: '70px', background: '#ffffff' }} />
+            ))}
+          </div>
+        ) : (
+          <div className="table-container">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Session Ref</th>
+                  <th>Driver Details</th>
+                  <th>Vehicle Plate</th>
+                  <th>Parking Zone</th>
+                  <th>Bay Level</th>
+                  <th>Time Interval</th>
+                  <th>Tariff</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredBookings.length === 0 ? (
+                  <tr>
+                    <td colSpan="8" style={{ padding: '48px', textAlign: 'center', color: '#64748b' }}>
+                      No parking records found matching the specified parameters.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredBookings.map((booking) => (
+                    <tr key={booking._id}>
+                      <td className="mono" style={{ fontSize: '12.5px', color: '#64748b', fontWeight: '600' }}>
+                        #{booking._id.slice(-6).toUpperCase()}
+                      </td>
+
+                      <td>
+                        <div style={{ fontWeight: '600', color: '#0f172a' }}>
+                          {booking.userId?.name || 'Citizen'}
+                        </div>
+                        <div style={{ fontSize: '12px', color: '#64748b' }}>
+                          {booking.userId?.phone}
+                        </div>
+                      </td>
+
+                      <td className="mono" style={{ fontWeight: '700', color: '#0f172a' }}>
+                        {booking.vehicleNumber || '—'}
+                      </td>
+
+                      <td style={{ color: '#475569' }}>
+                        {booking.lotId?.name}
+                      </td>
+
+                      <td>
+                        <div className="mono" style={{ fontWeight: '700', color: '#2563eb' }}>
+                          {booking.slotId?.slotNumber || '—'}
+                        </div>
+                        <span style={{ fontSize: '11px', color: '#64748b' }}>
+                          Floor {booking.slotId?.floor || '1'}
+                        </span>
+                      </td>
+
+                      <td style={{ fontSize: '13px', color: '#475569' }}>
+                        <div>{formatDate(booking.startTime)}</div>
+                        <div style={{ fontSize: '12px', color: '#64748b' }}>
+                          {formatTime(booking.startTime)} – {formatTime(booking.endTime)}
+                        </div>
+                      </td>
+
+                      <td style={{ fontWeight: '700', color: '#0f172a' }}>
+                        {formatCurrency(booking.totalCost)}
+                      </td>
+
+                      <td>
+                        <span className={`badge ${STATUS_BADGES[booking.status] || 'badge-gray'}`}>
+                          {booking.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
