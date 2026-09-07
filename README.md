@@ -1,188 +1,232 @@
-# 🅿️ ParkSmart — Smart Parking Management System
+# UrbanPark — Smart Parking Management System
 
-A full-stack **MERN** application for smart parking management designed for Indian cities like **Jaipur, Rajasthan**.
+UrbanPark is an enterprise-grade full-stack MERN application engineered for real-time smart parking management across high-density metropolitan zones, designed for the Jaipur Municipal Area, Rajasthan.
 
-## ✨ Features
+The platform provides citizen-facing dynamic parking discovery, interactive bay selection, atomic hold timers, dynamic surge pricing, and QR-based gate check-in/check-out, alongside an executive administrative analytics dashboard with predictive demand forecasting.
 
-- **📱 OTP Authentication** — Phone number + OTP login (no passwords)
-- **🗺️ Live Map** — Interactive Leaflet map showing parking zones in Jaipur
-- **🔴 Real-time Slots** — Socket.io powered live slot updates every 5 seconds
-- **💰 Dynamic Pricing** — 1.5x during peak hours (9-11am, 6-8pm), 0.8x off-peak
-- **📊 AI Prediction** — Hourly demand forecast chart
-- **📱 QR Codes** — Auto-generated QR for entry/exit after booking
-- **💳 UPI Payments** — Mock UPI/card/net banking payment UI
-- **👨‍💼 Admin Panel** — Revenue stats, occupancy analytics, booking management
-- **🌙 Dark Theme** — Modern navy + green color scheme
+---
 
-## 🏗️ Tech Stack
+## Architectural Principles
+
+1. **Strict MVC Separation**: Complete decoupling of routing declarations (`server/routes/`), business controllers (`server/controllers/`), and Mongoose schemas (`server/models/`).
+2. **Modular Code Standard**: All source files adhere strictly to a 200–400 lines of code boundary, extracting complex logic into cohesive subcomponents.
+3. **Executive White Theme**: High-contrast, accessibility-focused enterprise palette (`#ffffff` canvas, `#f8fafc` backdrop, `#e2e8f0` borders, `#2563eb` royal blue accents).
+4. **Clean SVG Iconography**: All raw unicode emojis are replaced with scalable, accessible vector icons (`Icons.js`).
+5. **Zero-Cost Local Architecture**: Seamless offline in-memory fallback for Redis, zero-cost mock OTP verification, and free-of-cost demo payment processing.
+
+---
+
+## Core Capabilities
+
+### Citizen Experience
+* **OTP Authentication**: Passwordless phone number authentication with localized cooldown timers and rate limiting.
+* **Interactive Facility Explorer**: Live availability status streamed directly from IoT sensor feeds with Carto Positron light map integration.
+* **Granular Slot Matrix**: Multi-level floor navigation with real-time bay status indicators (Available, Occupied, Reserved, EV Charger, Accessible).
+* **Atomic Hold Timer**: 10-minute temporary bay lock during checkout to eliminate double-booking race conditions.
+* **Dynamic Surge Pricing**: Real-time algorithmic rate multipliers (1.5x during peak surges, 0.8x off-peak, and occupancy-based multipliers).
+* **Digital QR Gate Pass**: Auto-generated scannable voucher and printable receipt for facility entry and exit.
+
+### Administrator Operations
+* **Predictive Demand Telemetry**: Dual-mode interactive visualization (Bar Chart and Smooth Area Trend) with real-time timeframe filters (24H, Peak Windows, Morning, Evening).
+* **Operational KPIs**: Live municipal occupancy rates, active sessions, and revenue metrics.
+* **Global Booking Ledger**: Platform-wide transaction history with real-time status filtering and search.
+* **Gate Scanner API**: Unified verification endpoint (`POST /api/bookings/scan-qr`) for physical barrier check-in and check-out.
+
+---
+
+## Technology Stack
 
 | Layer | Technology |
-|-------|-----------|
-| Frontend | React 18, React Router v6 |
-| Backend | Node.js, Express.js |
-| Database | MongoDB + Mongoose |
-| Real-time | Socket.io |
-| Auth | JWT + OTP (phone-based) |
-| Maps | Leaflet.js / React-Leaflet |
-| Charts | Chart.js / React-Chartjs-2 |
-| QR Code | `qrcode` npm package |
+| :--- | :--- |
+| **Frontend UI** | React 18, React Router v6, React-Toastify |
+| **Design System** | Vanilla CSS Tokens, Executive White Theme, Responsive Breakpoints |
+| **Mapping Engine** | Leaflet.js, React-Leaflet, Carto Positron Tiles |
+| **Data Visualization** | Chart.js 4, React-Chartjs-2 |
+| **Backend Runtime** | Node.js, Express.js |
+| **Architecture** | Model-View-Controller (MVC) |
+| **Database** | MongoDB, Mongoose ODM |
+| **Real-time Engine** | Socket.io (Bi-directional WebSocket streaming) |
+| **Caching Layer** | Redis Client with transparent in-memory TTL fallback |
+| **Voucher Engine** | Node QRCode generator |
 
-## 🚀 Quick Start
+---
+
+## Directory Structure
+
+```
+Urban-park/
+├── client/                                 # React Frontend (Port 3001)
+│   ├── src/
+│   │   ├── components/
+│   │   │   ├── DemandChart.js              # Predictive demand telemetry chart
+│   │   │   ├── Icons.js                    # Enterprise SVG icon system
+│   │   │   ├── Navbar.js                   # Responsive navigation & mobile drawer
+│   │   │   ├── ParkingMap.js               # Modular Carto light map
+│   │   │   └── SlotGridMatrix.js           # Multi-level bay selector matrix
+│   │   ├── pages/
+│   │   │   ├── AdminBookings.js            # Platform reservations ledger
+│   │   │   ├── AdminDashboard.js           # Administrative KPI telemetry
+│   │   │   ├── BookingPage.js              # Reservation checkout & hold timer
+│   │   │   ├── BookingSuccess.js           # Digital QR voucher & receipt
+│   │   │   ├── Dashboard.js                # Facility explorer & map view
+│   │   │   ├── Landing.js                  # City gateway landing page
+│   │   │   ├── Login.js                    # Phone OTP authentication
+│   │   │   ├── LotView.js                  # Real-time bay status page
+│   │   │   └── MyBookings.js               # Citizen reservation history
+│   │   ├── context/
+│   │   │   └── AuthContext.js              # Session & role state management
+│   │   ├── utils/
+│   │   │   ├── api.js                      # Central Axios client
+│   │   │   └── pricing.js                  # Surge formulas & telemetry mocks
+│   │   ├── index.css                       # Core white theme tokens
+│   │   └── responsive.css                  # Adaptive breakpoints & touch targets
+│   └── package.json
+│
+├── server/                                 # Express Backend (Port 5000)
+│   ├── config/
+│   │   ├── db.js                           # MongoDB connection handler
+│   │   └── redis.js                        # Redis store with in-memory proxy fallback
+│   ├── controllers/
+│   │   ├── adminController.js              # Administrative statistics & audit
+│   │   ├── authController.js               # OTP generation, rate limit & JWT
+│   │   ├── bookingController.js            # Atomic reservations, QR & gate scans
+│   │   └── parkingController.js            # Facilities, bay management & status
+│   ├── models/
+│   │   ├── Booking.js                      # Reservation schema & indexes
+│   │   ├── OTP.js                          # Temporary verification hashes
+│   │   ├── ParkingLot.js                   # Parking facilities & coordinates
+│   │   ├── ParkingSlot.js                  # Individual bay state & hold locks
+│   │   ├── Payment.js                      # Transaction records & demo gateway
+│   │   └── User.js                         # Citizen & administrator profiles
+│   ├── routes/
+│   │   ├── admin.js                        # Admin endpoints
+│   │   ├── auth.js                         # Authentication endpoints
+│   │   ├── bookings.js                     # Booking & gate scanner routes
+│   │   └── parking.js                      # Facility & slot routes
+│   ├── middleware/
+│   │   └── auth.js                         # JWT verification & role authorization
+│   ├── socket/
+│   │   └── handler.js                      # IoT sensor simulator & WebSocket feeds
+│   ├── seed.js                             # Database seeder (Jaipur facilities)
+│   └── server.js                           # Entry point & CORS configuration
+│
+└── package.json                            # Unified project scripts
+```
+
+---
+
+## Quick Start Guide
 
 ### Prerequisites
-- Node.js 18+
-- MongoDB running locally (or MongoDB Atlas URI)
+* Node.js v18.x or higher
+* MongoDB running locally (`mongodb://127.0.0.1:27017/smart-parking`) or MongoDB Atlas URI
 
-### 1. Clone & Install
-
+### 1. Installation
+Clone the repository and install dependencies for both client and server:
 ```bash
-# Install root dependencies
+# Install root orchestration packages
 npm install
 
-# Install all (client + server)
+# Install dependencies for both client and server
 npm run install-all
 ```
 
-### 2. Configure Environment
-
-Edit `server/.env`:
-```
-MONGO_URI=mongodb://localhost:27017/smart-parking
-JWT_SECRET=your_secret_key_here
+### 2. Environment Configuration
+Verify or create `server/.env`:
+```env
 PORT=5000
 NODE_ENV=development
+MONGO_URI=mongodb://127.0.0.1:27017/smart-parking
+JWT_SECRET=urban_park_jwt_enterprise_secret_jaipur_2026
+REDIS_URL=redis://127.0.0.1:6379
 ```
 
-### 3. Seed Database
+Verify or create `client/.env`:
+```env
+PORT=3001
+BROWSER=none
+```
 
+### 3. Database Initialization
+Seed the database with default facilities, bays, and administrator accounts:
 ```bash
 npm run seed
 ```
-This creates:
-- 3 Jaipur parking lots with 20 slots each
-- Admin user (phone: `9999999999`)
+This populates:
+* 3 Jaipur metropolitan parking facilities (Pink City Hub, Amer Bazaar Park, Vaishali Nagar Complex)
+* 60 individual bays categorized by type (Regular, EV Charging, Compact, Accessible)
+* Default municipal administrator profile
 
-### 4. Start Development
-
+### 4. Running the Application
+Launch both backend and frontend concurrently:
 ```bash
 npm run dev
 ```
-- Frontend: http://localhost:3000
-- Backend: http://localhost:5000
+* **Frontend Portal:** [http://localhost:3001](http://localhost:3001)
+* **Backend API:** [http://localhost:5000/api](http://localhost:5000/api)
 
-## 👤 Test Accounts
+---
 
-| Role | Phone | OTP |
-|------|-------|-----|
-| Admin | 9999999999 | *(shown in dev mode)* |
-| User | Any valid Indian number | *(shown in dev mode)* |
+## Default Access Credentials
 
-> In development mode, the OTP is displayed in the UI automatically.
+| Profile | Phone Number | Verification Code (Dev Mode) | Access Role |
+| :--- | :--- | :--- | :--- |
+| **Municipal Administrator** | `9999999999` | `111111` (or logged OTP) | Admin Dashboard, Telemetry, Ledger |
+| **Citizen / Driver** | Any 10-digit number | Displayed on screen | Discovery, Reservation, Pass Voucher |
 
-## 📁 Project Structure
+---
 
-```
-smart-parking/
-├── client/                     # React Frontend
-│   └── src/
-│       ├── pages/
-│       │   ├── Landing.js      # Hero landing page
-│       │   ├── Login.js        # OTP authentication
-│       │   ├── Dashboard.js    # Parking search + map
-│       │   ├── LotView.js      # Slot grid view
-│       │   ├── BookingPage.js  # Booking form + payment
-│       │   ├── BookingSuccess.js # QR code display
-│       │   ├── MyBookings.js   # User booking history
-│       │   └── AdminDashboard.js # Admin analytics
-│       ├── components/
-│       │   └── Navbar.js
-│       ├── context/
-│       │   └── AuthContext.js  # JWT + OTP auth state
-│       └── utils/
-│           ├── api.js          # Axios client
-│           └── pricing.js      # Dynamic pricing + AI prediction
-│
-├── server/                     # Node.js Backend
-│   ├── models/
-│   │   ├── User.js
-│   │   ├── OTP.js
-│   │   ├── ParkingLot.js
-│   │   ├── ParkingSlot.js
-│   │   ├── Booking.js
-│   │   └── Payment.js
-│   ├── routes/
-│   │   ├── auth.js             # OTP endpoints
-│   │   ├── parking.js          # Lots & slots
-│   │   ├── bookings.js         # Booking CRUD
-│   │   └── admin.js            # Admin stats
-│   ├── middleware/
-│   │   └── auth.js             # JWT middleware
-│   ├── socket/
-│   │   └── handler.js          # Real-time IoT simulation
-│   ├── seed.js                 # Database seeder
-│   └── server.js
-│
-└── package.json                # Root scripts (concurrently)
-```
+## REST API Specification
 
-## 🌐 API Endpoints
+### Authentication
+| Method | Endpoint | Access | Description |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/api/auth/send-otp` | Public | Dispatches verification OTP (rate limited to 5/10m) |
+| `POST` | `/api/auth/verify-otp` | Public | Validates OTP, creates user session, returns JWT |
+| `GET` | `/api/auth/me` | Authenticated | Retrieves current user session and role |
 
-### Auth
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/api/auth/send-otp` | Send OTP to phone |
-| POST | `/api/auth/verify-otp` | Verify OTP + login |
-| GET | `/api/auth/me` | Get current user |
+### Parking Facilities & Bays
+| Method | Endpoint | Access | Description |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/parking/lots` | Public | Retrieves all active facilities with live occupancy |
+| `GET` | `/api/parking/lots/:id` | Public | Retrieves metadata for a single parking facility |
+| `GET` | `/api/parking/lots/:id/slots` | Public | Retrieves all bays and real-time statuses |
+| `POST` | `/api/parking/slots/:id/lock` | Authenticated | Acquires atomic 10-minute lock on a specific bay |
+| `POST` | `/api/parking/slots/:id/unlock` | Authenticated | Releases an active bay lock |
+| `PUT` | `/api/parking/slots/:id/status` | Admin Only | Administrative manual status override |
 
-### Parking
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/parking/lots` | All parking lots |
-| GET | `/api/parking/lots/:id` | Single lot details |
-| GET | `/api/parking/lots/:id/slots` | Lot's slots |
-| PUT | `/api/parking/slots/:id/status` | Update slot status |
+### Reservations & Gate Operations
+| Method | Endpoint | Access | Description |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/api/bookings` | Authenticated | Creates confirmed reservation with atomic bay locking |
+| `GET` | `/api/bookings/my` | Authenticated | Retrieves citizen reservation history |
+| `GET` | `/api/bookings/:id` | Authenticated | Retrieves single booking voucher and QR code |
+| `PUT` | `/api/bookings/:id/cancel` | Authenticated | Cancels booking and releases assigned parking bay |
+| `POST` | `/api/bookings/scan-qr` | Authenticated | Gate barrier check-in / check-out scanner endpoint |
 
-### Bookings
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/api/bookings` | Create booking |
-| GET | `/api/bookings/my` | User's bookings |
-| GET | `/api/bookings/:id` | Single booking |
-| PUT | `/api/bookings/:id/cancel` | Cancel booking |
+### Administration
+| Method | Endpoint | Access | Description |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/admin/stats` | Admin Only | Aggregates revenue, occupancy rate, and telemetry |
+| `GET` | `/api/admin/bookings` | Admin Only | Retrieves complete platform reservation ledger |
+| `POST` | `/api/admin/lots` | Admin Only | Provisions new municipal parking facility |
 
-### Admin
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/admin/stats` | Revenue & occupancy stats |
-| GET | `/api/admin/bookings` | All bookings |
-| POST | `/api/admin/lots` | Create new lot |
+---
 
-## 💰 Dynamic Pricing Logic
+## Concurrency & Security Model
 
-```js
-Peak hours (9, 10, 18, 19, 20):  basePrice × 1.5
-Off-peak (0-5, 23):               basePrice × 0.8  
-Normal:                           basePrice × 1.0
-```
+1. **Race Condition Prevention**: Prevents double-booking by utilizing atomic MongoDB operations (`findOneAndUpdate`) with preconditions (`status: 'available'`).
+2. **Conflict Detection**: Checks existing reservations for bay timeframe overlaps prior to finalizing bookings.
+3. **Temporal Bounds Validation**: Rejects reservations set in the past or exceeding the maximum 72-hour booking threshold.
+4. **Zero-Cost Fallbacks**: Redis connection failures automatically switch to an in-memory TTL cache without terminating server execution.
+5. **Simulated IoT Safety**: The background sensor simulator in `socket/handler.js` explicitly ignores bays marked as `reserved` or `locked`, ensuring citizen checkout flows remain uninterrupted.
 
-## 🔌 Real-time Events (Socket.io)
+---
 
-- `join-lot` — Subscribe to a parking lot's updates
-- `leave-lot` — Unsubscribe
-- `slot-update` — Emitted when slot status changes
-- `lot-occupancy-update` — Broadcast occupancy % to all clients
+## Production Deployment Notes
 
-## 🌆 Parking Zones (Seeded Data)
-
-1. **Pink City Parking Hub** — MI Road, ₹40/hr
-2. **Amer Bazaar Smart Park** — Amer Road, ₹30/hr
-3. **Vaishali Nagar Parking Complex** — Vaishali Nagar, ₹25/hr
-
-## 📱 Production SMS Integration
-
-To enable real OTP delivery, integrate an SMS gateway in `server/routes/auth.js`:
-- **MSG91** (Indian SMS provider)
-- **Twilio**
-- **Fast2SMS**
-
-Replace the `console.log` OTP line with your SMS API call.
+To transition from local development mode to production:
+1. **SMS Gateway**: Integrate Twilio, MSG91, or Fast2SMS inside `server/controllers/authController.js` to replace internal console logging.
+2. **Payment Processing**: Configure live Razorpay, Stripe, or Cashfree credentials in `server/controllers/bookingController.js`.
+3. **Persistent Cache**: Provide a managed Redis URI in `server/.env` to persist session rate-limiting across multi-instance clusters.
+4. **Environment Mode**: Set `NODE_ENV=production` to disable development OTP bypasses.
