@@ -1,5 +1,5 @@
-import React from 'react';
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import React, { useEffect } from 'react';
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 
 // Fix leaflet default icon assets
@@ -18,30 +18,65 @@ const blueMarkerIcon = new L.Icon({
   popupAnchor: [1, -34]
 });
 
+const redMarkerIcon = new L.Icon({
+  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34]
+});
+
+// Component to handle dynamic recentering of Leaflet map
+function MapRecenter({ center }) {
+  const map = useMap();
+  useEffect(() => {
+    if (center && Array.isArray(center) && center.length === 2 && center[0] && center[1]) {
+      map.setView(center, 13, { animate: true });
+    }
+  }, [center, map]);
+  return null;
+}
+
 /**
- * Enterprise Map Component for Jaipur Parking Facilities
+ * Enterprise Map Component for Parking Facilities
  * Pure white theme, responsive tile viewport
  */
-export default function ParkingMap({ lots = [], getLotOccupancy }) {
-  const defaultCenter = [26.9124, 75.7873]; // Jaipur central coordinates
+export default function ParkingMap({ lots = [], getLotOccupancy, userCoords }) {
+  const mapCenter = userCoords?.lat && userCoords?.lng
+    ? [userCoords.lat, userCoords.lng]
+    : [26.9124, 75.7873];
 
   return (
-    <div style={{ height: '520px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #e2e8f0' }}>
+    <div className="parking-map-wrapper">
       <MapContainer
-        center={defaultCenter}
-        zoom={12}
+        center={mapCenter}
+        zoom={13}
         scrollWheelZoom={false}
         style={{ height: '100%', width: '100%' }}
       >
+        <MapRecenter center={mapCenter} />
         <TileLayer
-          url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
-          attribution='&copy; <a href="https://carto.com/">CARTO</a>'
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         />
+
+        {/* User Current Location Marker */}
+        {userCoords?.lat && userCoords?.lng && (
+          <Marker position={[userCoords.lat, userCoords.lng]} icon={redMarkerIcon}>
+            <Popup>
+              <div style={{ padding: '4px', fontWeight: '700', color: '#dc2626', fontSize: '13px' }}>
+                📍 Your Location / Search Center
+              </div>
+            </Popup>
+          </Marker>
+        )}
+
+        {/* Parking Lots Markers */}
         {lots.map((lot) => {
           const occ = getLotOccupancy ? getLotOccupancy(lot) : { available: lot.availableSlots || 0 };
           return (
             <Marker
-              key={lot._id}
+              key={lot._id || lot.id}
               position={[lot.coordinates.lat, lot.coordinates.lng]}
               icon={blueMarkerIcon}
             >
@@ -67,6 +102,20 @@ export default function ParkingMap({ lots = [], getLotOccupancy }) {
           );
         })}
       </MapContainer>
+      <style>{`
+        .parking-map-wrapper {
+          height: 520px;
+          border-radius: 8px;
+          overflow: hidden;
+          border: 1px solid #e2e8f0;
+        }
+        @media (max-width: 768px) {
+          .parking-map-wrapper {
+            height: 360px;
+          }
+        }
+      `}</style>
     </div>
   );
 }
+

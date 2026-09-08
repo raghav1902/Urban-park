@@ -8,6 +8,8 @@ const dotenv = require('dotenv');
 // Load environment variables first
 dotenv.config();
 
+// Server timestamp touch
+
 // Initialize Redis connection (or resilient memory fallback)
 require('./config/redis');
 
@@ -55,9 +57,12 @@ app.use('/api/auth', require('./routes/auth'));
 app.use('/api/parking', require('./routes/parking'));
 app.use('/api/bookings', require('./routes/bookings'));
 app.use('/api/admin', require('./routes/admin'));
+app.use('/api/ev-stations', require('./routes/evStations'));
 
 // Real-time Socket.io IoT sensor simulation
 require('./socket/handler')(io);
+
+// Server reload stamp: 2026-09-08-fuel-ev-update
 
 // MongoDB connection
 const mongoUri = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/smart-parking';

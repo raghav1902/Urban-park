@@ -9,7 +9,8 @@ import {
   IconClose,
   IconBuilding,
   IconCalendar,
-  IconBarChart
+  IconBarChart,
+  IconZap
 } from './Icons';
 
 /**
@@ -31,10 +32,12 @@ export default function Navbar() {
   const navLinks = user?.role === 'admin'
     ? [
         { to: '/admin', label: 'Admin Overview', icon: <IconBarChart size={16} /> },
-        { to: '/admin/bookings', label: 'Global Bookings', icon: <IconCalendar size={16} /> }
+        { to: '/admin/bookings', label: 'Global Bookings', icon: <IconCalendar size={16} /> },
+        { to: '/ev-stations', label: 'Fuel & EV Stations', icon: <IconZap size={16} /> }
       ]
     : [
         { to: '/dashboard', label: 'Parking Zones', icon: <IconBuilding size={16} /> },
+        { to: '/ev-stations', label: 'Fuel & EV Stations', icon: <IconZap size={16} /> },
         { to: '/my-bookings', label: 'My Reservations', icon: <IconCalendar size={16} /> }
       ];
 

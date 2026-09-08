@@ -1,34 +1,25 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../utils/api';
-import { formatCurrency, formatDate, formatTime } from '../utils/pricing';
 import { toast } from 'react-toastify';
-import {
-  IconCar,
-  IconCalendar,
-  IconMapPin,
-  IconQrCode,
-  IconClock,
-  IconArrowRight,
-  IconShield
-} from '../components/Icons';
-
-const STATUS_BADGES = {
-  confirmed: 'badge-green',
-  active: 'badge-blue',
-  pending: 'badge-amber',
-  completed: 'badge-gray',
-  cancelled: 'badge-red'
-};
+import { IconCar, IconArrowRight } from '../components/Icons';
+import IndoorWayfinderModal from '../components/IndoorWayfinderModal';
+import EcoImpactCard from '../components/EcoImpactCard';
+import BookingCard from '../components/bookings/BookingCard';
+import ExtendBookingModal from '../components/bookings/ExtendBookingModal';
 
 /**
- * Enterprise User Reservation Ledger
- * Pure white theme, responsive grid, zero emojis, clean status indicators
+ * Enterprise User Reservation Ledger Page
  */
 export default function MyBookings() {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState(null);
+  const [selectedExtendBooking, setSelectedExtendBooking] = useState(null);
+  const [extendHours, setExtendHours] = useState(1);
+  const [extendingLoading, setExtendingLoading] = useState(false);
+  const [wayfinderBooking, setWayfinderBooking] = useState(null);
+  const [togglingEvId, setTogglingEvId] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -47,6 +38,23 @@ export default function MyBookings() {
     }
   };
 
+  const handleToggleEv = async (bookingId) => {
+    setTogglingEvId(bookingId);
+    try {
+      const res = await api.post(`/bookings/${bookingId}/ev-toggle`);
+      if (res.data.success) {
+        toast.success(res.data.message);
+        setBookings((prev) =>
+          prev.map((b) => (b._id === bookingId ? { ...b, evCharging: res.data.evCharging } : b))
+        );
+      }
+    } catch (err) {
+      toast.error('Failed to update EV charging status.');
+    } finally {
+      setTogglingEvId(null);
+    }
+  };
+
   const handleCancel = async (bookingId) => {
     const isConfirmed = window.confirm('Are you sure you want to cancel this reservation? The slot will be released.');
     if (!isConfirmed) return;
@@ -59,6 +67,34 @@ export default function MyBookings() {
       toast.success('Reservation cancelled. The parking slot has been released.');
     } catch (err) {
       toast.error(err.response?.data?.message || 'Cancellation request failed.');
+    }
+  };
+
+  const handleConfirmExtend = async () => {
+    if (!selectedExtendBooking) return;
+    setExtendingLoading(true);
+
+    try {
+      const res = await api.put(`/bookings/${selectedExtendBooking._id}/extend`, {
+        hours: extendHours
+      });
+
+      toast.success(res.data.message || `Extended by ${extendHours} hr(s) successfully!`);
+
+      if (res.data.booking) {
+        setBookings((prev) =>
+          prev.map((item) => (item._id === selectedExtendBooking._id ? res.data.booking : item))
+        );
+      } else {
+        await fetchMyBookings();
+      }
+
+      setSelectedExtendBooking(null);
+      setExtendHours(1);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to extend booking duration.');
+    } finally {
+      setExtendingLoading(false);
     }
   };
 
@@ -89,6 +125,11 @@ export default function MyBookings() {
             Review past reservations, download active gate passes, or manage schedules.
           </p>
         </div>
+
+        {/* Green City ESG Eco-Impact Tracker */}
+        {!loading && bookings.length > 0 && (
+          <EcoImpactCard bookingCount={bookings.length} />
+        )}
 
         {loading ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -126,171 +167,38 @@ export default function MyBookings() {
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            {bookings.map((booking) => {
-              const isExpanded = expandedId === booking._id;
-              const isCancellable = ['confirmed', 'pending'].includes(booking.status);
-
-              return (
-                <div
-                  key={booking._id}
-                  className="card"
-                  style={{
-                    background: '#ffffff',
-                    padding: '20px 24px',
-                    cursor: 'pointer',
-                    transition: 'border-color 0.15s ease'
-                  }}
-                  onClick={() => setExpandedId(isExpanded ? null : booking._id)}
-                >
-                  <div
-                    style={{
-                      display: 'flex',
-                      flexWrap: 'wrap',
-                      justifyContent: 'space-between',
-                      alignItems: 'flex-start',
-                      gap: '12px'
-                    }}
-                  >
-                    <div style={{ flex: 1, minWidth: '220px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
-                        <span className="mono" style={{ fontSize: '20px', fontWeight: '800', color: '#2563eb' }}>
-                          {booking.slotId?.slotNumber || 'Bay N/A'}
-                        </span>
-                        <span className={`badge ${STATUS_BADGES[booking.status] || 'badge-gray'}`}>
-                          {booking.status}
-                        </span>
-                      </div>
-
-                      <div style={{ fontSize: '16px', fontWeight: '700', color: '#0f172a', marginBottom: '4px' }}>
-                        {booking.lotId?.name}
-                      </div>
-
-                      <div style={{ fontSize: '13px', color: '#64748b' }}>
-                        {formatDate(booking.startTime)} • {formatTime(booking.startTime)} – {formatTime(booking.endTime)}
-                      </div>
-                    </div>
-
-                    <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontSize: '20px', fontWeight: '800', color: '#0f172a' }}>
-                        {formatCurrency(booking.totalCost)}
-                      </div>
-                      <div style={{ fontSize: '12px', color: '#64748b', fontWeight: '500' }}>
-                        {booking.duration} {booking.duration === 1 ? 'hr' : 'hrs'}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Expanded Detail Accordion */}
-                  {isExpanded && (
-                    <div
-                      style={{
-                        marginTop: '20px',
-                        paddingTop: '20px',
-                        borderTop: '1px solid #e2e8f0',
-                        animation: 'fadeIn 0.2s ease'
-                      }}
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <div
-                        style={{
-                          display: 'grid',
-                          gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-                          gap: '14px',
-                          marginBottom: '20px'
-                        }}
-                      >
-                        <div>
-                          <span style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', fontWeight: '600' }}>
-                            Vehicle Plate
-                          </span>
-                          <div className="mono" style={{ fontSize: '14px', fontWeight: '700', color: '#0f172a', marginTop: '2px' }}>
-                            {booking.vehicleNumber}
-                          </div>
-                        </div>
-
-                        <div>
-                          <span style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', fontWeight: '600' }}>
-                            Level Location
-                          </span>
-                          <div style={{ fontSize: '14px', fontWeight: '600', color: '#0f172a', marginTop: '2px' }}>
-                            Floor {booking.slotId?.floor || '1'}
-                          </div>
-                        </div>
-
-                        <div>
-                          <span style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', fontWeight: '600' }}>
-                            Address
-                          </span>
-                          <div style={{ fontSize: '13.5px', color: '#475569', marginTop: '2px' }}>
-                            {booking.lotId?.location}
-                          </div>
-                        </div>
-
-                        <div>
-                          <span style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', fontWeight: '600' }}>
-                            Booked On
-                          </span>
-                          <div style={{ fontSize: '13.5px', color: '#475569', marginTop: '2px' }}>
-                            {formatDate(booking.createdAt)}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* QR Gate Pass Section */}
-                      {booking.qrCode && booking.status !== 'cancelled' && (
-                        <div
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '16px',
-                            padding: '14px 18px',
-                            background: '#f8fafc',
-                            borderRadius: '8px',
-                            border: '1px solid #e2e8f0',
-                            marginBottom: '16px'
-                          }}
-                        >
-                          <img
-                            src={booking.qrCode}
-                            alt="QR Pass"
-                            style={{ width: '64px', height: '64px', borderRadius: '6px', border: '1px solid #cbd5e1' }}
-                          />
-                          <div style={{ flex: 1 }}>
-                            <div style={{ fontSize: '13.5px', fontWeight: '700', color: '#0f172a' }}>
-                              Digital Entrance QR Code
-                            </div>
-                            <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>
-                              Present this barcode directly at the facility boom barrier scanner.
-                            </div>
-                          </div>
-                          <button
-                            onClick={() => navigate(`/booking-success/${booking._id}`)}
-                            className="btn btn-secondary"
-                            style={{ padding: '6px 14px', fontSize: '12.5px' }}
-                          >
-                            Full Pass
-                          </button>
-                        </div>
-                      )}
-
-                      {/* Cancellation Action */}
-                      {isCancellable && (
-                        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                          <button
-                            onClick={() => handleCancel(booking._id)}
-                            className="btn btn-danger"
-                            style={{ padding: '8px 16px', fontSize: '13px' }}
-                          >
-                            Cancel Reservation
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+            {bookings.map((booking) => (
+              <BookingCard
+                key={booking._id}
+                booking={booking}
+                isExpanded={expandedId === booking._id}
+                onToggleExpand={() => setExpandedId(expandedId === booking._id ? null : booking._id)}
+                onCancel={handleCancel}
+                onOpenExtend={setSelectedExtendBooking}
+                onOpenWayfinder={setWayfinderBooking}
+                togglingEvId={togglingEvId}
+                onToggleEv={handleToggleEv}
+              />
+            ))}
           </div>
+        )}
+
+        {/* Extension Modal */}
+        <ExtendBookingModal
+          booking={selectedExtendBooking}
+          extendHours={extendHours}
+          setExtendHours={setExtendHours}
+          extendingLoading={extendingLoading}
+          onClose={() => setSelectedExtendBooking(null)}
+          onConfirm={handleConfirmExtend}
+        />
+
+        {/* Indoor Wayfinder Modal */}
+        {wayfinderBooking && (
+          <IndoorWayfinderModal
+            booking={wayfinderBooking}
+            onClose={() => setWayfinderBooking(null)}
+          />
         )}
       </div>
     </div>

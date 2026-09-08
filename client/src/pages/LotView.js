@@ -14,6 +14,7 @@ import {
   IconClock
 } from '../components/Icons';
 import SlotGridMatrix from '../components/SlotGridMatrix';
+import OccupancyForecastChart from '../components/OccupancyForecastChart';
 
 /**
  * Enterprise Slot Selection Page
@@ -205,7 +206,9 @@ export default function LotView() {
           </div>
         </div>
 
-        {/* Filter Toolbar */}
+        {/* AI Occupancy & Rush Hour Predictive Forecast */}
+        <OccupancyForecastChart lotName={lot.name} />
+
         {/* Layout with Slot Grid & Booking Panel */}
         <div className="lot-grid-layout">
           {/* Main Slots Matrix via Subcomponent */}

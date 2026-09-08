@@ -1,6 +1,7 @@
-import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { ToastContainer } from 'react-toastify';
+import React, { useEffect } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { ToastContainer, toast } from 'react-toastify';
+import io from 'socket.io-client';
 import 'react-toastify/dist/ReactToastify.css';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Navbar from './components/Navbar';
@@ -11,6 +12,7 @@ import LotView from './pages/LotView';
 import BookingPage from './pages/BookingPage';
 import BookingSuccess from './pages/BookingSuccess';
 import MyBookings from './pages/MyBookings';
+import EVStationsNearby from './pages/EVStationsNearby';
 import AdminDashboard from './pages/AdminDashboard';
 import AdminBookings from './pages/AdminBookings';
 
@@ -32,6 +34,55 @@ const PrivateRoute = ({ children, adminOnly }) => {
 
 function AppRoutes() {
   const { user } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!user) return;
+
+    const socket = io('http://localhost:5000');
+    const userId = user.id || user._id;
+
+    socket.emit('register-user', userId);
+
+    const handleExpiryNotification = (data) => {
+      toast.warn(
+        <div>
+          <div style={{ fontWeight: '700', marginBottom: '4px', color: '#b45309' }}>
+            ⏰ Parking Expiring in {data.remainingMinutes} min(s)!
+          </div>
+          <div style={{ fontSize: '12.5px', color: '#451a03', marginBottom: '8px' }}>
+            {data.message}
+          </div>
+          <button
+            onClick={() => navigate('/my-bookings')}
+            style={{
+              background: '#d97706',
+              color: '#ffffff',
+              border: 'none',
+              padding: '6px 12px',
+              borderRadius: '6px',
+              fontSize: '12px',
+              fontWeight: '700',
+              cursor: 'pointer'
+            }}
+          >
+            Extend Duration Now →
+          </button>
+        </div>,
+        { autoClose: 15000 }
+      );
+    };
+
+    socket.on('booking-expiring-soon', handleExpiryNotification);
+    socket.on('notification-alert', (data) => {
+      if (data.userId && data.userId.toString() === userId?.toString()) {
+        handleExpiryNotification(data);
+      }
+    });
+
+    return () => socket.disconnect();
+  }, [user, navigate]);
+
   return (
     <>
       <Navbar />
@@ -43,6 +94,7 @@ function AppRoutes() {
         <Route path="/book/:id" element={<PrivateRoute><BookingPage /></PrivateRoute>} />
         <Route path="/booking-success/:id" element={<PrivateRoute><BookingSuccess /></PrivateRoute>} />
         <Route path="/my-bookings" element={<PrivateRoute><MyBookings /></PrivateRoute>} />
+        <Route path="/ev-stations" element={<PrivateRoute><EVStationsNearby /></PrivateRoute>} />
         <Route path="/admin" element={<PrivateRoute adminOnly><AdminDashboard /></PrivateRoute>} />
         <Route path="/admin/bookings" element={<PrivateRoute adminOnly><AdminBookings /></PrivateRoute>} />
         <Route path="*" element={<Navigate to="/" />} />
@@ -50,6 +102,7 @@ function AppRoutes() {
     </>
   );
 }
+
 
 function App() {
   return (
