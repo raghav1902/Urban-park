@@ -62,12 +62,7 @@ export default function Login() {
 
     setLoading(true);
     try {
-      const res = await verifyOTP(phone.trim(), cleanOtp);
-      if (res.requireName) {
-        setStep('name');
-        setLoading(false);
-        return;
-      }
+      const res = await verifyOTP(phone.trim(), cleanOtp, name.trim());
       toast.success(`Authenticated successfully as ${res.user.name || 'User'}`);
       navigate(res.user.role === 'admin' ? '/admin' : '/dashboard');
     } catch (err) {
@@ -76,6 +71,7 @@ export default function Login() {
       setLoading(false);
     }
   };
+
 
   const handleSetName = async (e) => {
     e.preventDefault();
@@ -250,6 +246,21 @@ export default function Login() {
                     textAlign: 'center',
                     padding: '14px 10px'
                   }}
+                />
+              </div>
+
+              <div>
+                <label className="input-label" htmlFor="name-input" style={{ fontSize: '12px' }}>
+                  Full Name (Optional for new users)
+                </label>
+                <input
+                  id="name-input"
+                  className="input"
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="e.g. Raghav Sharma"
+                  style={{ fontSize: '14px', padding: '10px 14px' }}
                 />
               </div>
 

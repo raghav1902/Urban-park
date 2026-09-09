@@ -4,19 +4,24 @@ import api from '../utils/api';
 import { formatCurrency } from '../utils/pricing';
 import { toast } from 'react-toastify';
 import { useAuth } from '../context/AuthContext';
-import {
-  IconArrowLeft,
-  IconClock,
-  IconCheck,
-  IconCreditCard,
-  IconShield,
-  IconCalendar,
-  IconCar
-} from '../components/Icons';
+import { IconArrowLeft } from '../components/Icons';
+import BookingHoldTimer from '../components/booking/BookingHoldTimer';
+import ConciergeAddonSelector, { CONCIERGE_SERVICES } from '../components/booking/ConciergeAddonSelector';
+import PaymentMethodSelector from '../components/booking/PaymentMethodSelector';
+import BookingCostSummary from '../components/booking/BookingCostSummary';
+
+const toLocalInputFormat = (date) => {
+  const pad = (num) => String(num).padStart(2, '0');
+  const year = date.getFullYear();
+  const month = pad(date.getMonth() + 1);
+  const day = pad(date.getDate());
+  const hours = pad(date.getHours());
+  const minutes = pad(date.getMinutes());
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+};
 
 /**
  * Enterprise Booking & Payment Confirmation Page
- * Responsive 2-column or stacked layout, pure white theme, zero emojis, verified locking
  */
 export default function BookingPage() {
   const { id: lotId } = useParams();
@@ -26,14 +31,33 @@ export default function BookingPage() {
   const { slot, lot, pricing } = state || {};
 
   const now = new Date();
-  const defaultStart = new Date(now.getTime() + 10 * 60000);
-  const defaultEnd = new Date(now.getTime() + 70 * 60000);
+  const defaultEnd = new Date(now.getTime() + 2 * 3600000);
 
-  const [startTime, setStartTime] = useState(defaultStart.toISOString().slice(0, 16));
-  const [endTime, setEndTime] = useState(defaultEnd.toISOString().slice(0, 16));
+  const [startTime, setStartTime] = useState(toLocalInputFormat(now));
+  const [endTime, setEndTime] = useState(toLocalInputFormat(defaultEnd));
+  const [selectedPreset, setSelectedPreset] = useState(2);
   const [vehicleNumber, setVehicleNumber] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('free_demo');
   const [loading, setLoading] = useState(false);
+
+  // Smart Add-ons & EV Charging
+  const [selectedAddOns, setSelectedAddOns] = useState([]);
+  const [enableEvCharging, setEnableEvCharging] = useState(slot?.type === 'ev');
+  const [parkingNotes, setParkingNotes] = useState('');
+
+  const toggleAddOn = (id) => {
+    setSelectedAddOns((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
+  const handleQuickSelectDuration = (hours) => {
+    const start = new Date();
+    const end = new Date(start.getTime() + hours * 3600000);
+    setStartTime(toLocalInputFormat(start));
+    setEndTime(toLocalInputFormat(end));
+    setSelectedPreset(hours);
+  };
 
   // 5-minute checkout hold timer
   const [lockTimeLeft, setLockTimeLeft] = useState(300);
@@ -59,7 +83,7 @@ export default function BookingPage() {
         }
       } catch (error) {
         toast.error(error.response?.data?.message || 'Slot hold failed. Please re-select.');
-        if (error.response?.status === 400) {
+        if (error.response?.status === 400 || error.response?.status === 409) {
           navigate(-1);
         }
       }
@@ -98,12 +122,6 @@ export default function BookingPage() {
     }
   };
 
-  const formatTime = (seconds) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
-  };
-
   if (!slot || !lot) {
     return (
       <div style={{ minHeight: '100vh', background: '#f8fafc', paddingTop: '100px', textAlign: 'center' }}>
@@ -117,7 +135,16 @@ export default function BookingPage() {
 
   const durationHours = Math.max(1, Math.ceil((new Date(endTime) - new Date(startTime)) / 3600000));
   const hourlyRate = pricing?.price || lot.pricePerHour;
-  const totalCost = hourlyRate * durationHours;
+  const parkingTariff = hourlyRate * durationHours;
+
+  const addOnsTotal = selectedAddOns.reduce((sum, id) => {
+    const s = CONCIERGE_SERVICES.find((srv) => srv.id === id);
+    return sum + (s ? s.price : 0);
+  }, 0);
+
+  const isEvSlot = slot?.type === 'ev';
+  const evChargingFee = (enableEvCharging && isEvSlot) ? 225 : 0;
+  const totalCost = parkingTariff + addOnsTotal + evChargingFee;
 
   const handleBook = async (e) => {
     e.preventDefault();
@@ -140,7 +167,18 @@ export default function BookingPage() {
         startTime,
         endTime,
         vehicleNumber: vehicleNumber.trim().toUpperCase(),
-        paymentMethod
+        paymentMethod,
+        addOnServices: selectedAddOns.map((id) => {
+          const s = CONCIERGE_SERVICES.find((srv) => srv.id === id);
+          return { id: s.id, name: s.name, price: s.price };
+        }),
+        evCharging: {
+          enabled: enableEvCharging && isEvSlot,
+          chargerType: 'Type-2 22kW Fast AC',
+          chargingCost: evChargingFee,
+          currentBatteryPct: 45
+        },
+        parkingNotes
       });
 
       toast.success('Reservation confirmed successfully.');
@@ -152,11 +190,15 @@ export default function BookingPage() {
     }
   };
 
-  const paymentOptions = [
-    { id: 'free_demo', title: 'Community Free Pass', desc: 'Complimentary pilot access program' },
-    { id: 'upi', title: 'UPI Quick Pay', desc: 'Instant verification via BHIM, GPay, PhonePe' },
-    { id: 'card', title: 'Corporate / Fleet Card', desc: 'Visa, MasterCard, RuPay' },
-    { id: 'netbanking', title: 'Net Banking Gateway', desc: 'Direct bank account transfer' }
+  const durationPresets = [
+    { label: '1 Hr', hours: 1 },
+    { label: '2 Hrs', hours: 2 },
+    { label: '3 Hrs', hours: 3 },
+    { label: '4 Hrs', hours: 4 },
+    { label: '6 Hrs', hours: 6 },
+    { label: '8 Hrs', hours: 8 },
+    { label: '12 Hrs', hours: 12 },
+    { label: '24 Hrs', hours: 24 }
   ];
 
   return (
@@ -179,54 +221,7 @@ export default function BookingPage() {
         </p>
 
         {/* Temporary Hold Countdown Strip */}
-        {lockTimeLeft > 0 && (
-          <div
-            style={{
-              background: lockTimeLeft < 60 ? '#fef2f2' : '#ffffff',
-              border: `1.5px solid ${lockTimeLeft < 60 ? '#f87171' : '#bfdbfe'}`,
-              borderRadius: '10px',
-              padding: '14px 20px',
-              marginBottom: '24px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              boxShadow: 'var(--shadow-sm)'
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <div
-                style={{
-                  width: '36px',
-                  height: '36px',
-                  borderRadius: '8px',
-                  background: lockTimeLeft < 60 ? '#fee2e2' : '#eff6ff',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}
-              >
-                <IconClock size={18} color={lockTimeLeft < 60 ? '#dc2626' : '#2563eb'} />
-              </div>
-              <div>
-                <div style={{ fontSize: '14px', fontWeight: '700', color: '#0f172a' }}>
-                  Temporary Slot Hold Active
-                </div>
-                <div style={{ fontSize: '12px', color: lockTimeLeft < 60 ? '#dc2626' : '#64748b' }}>
-                  {lockTimeLeft < 60 ? 'Hurry! Final seconds before release.' : 'Spot is held exclusively for your checkout.'}
-                </div>
-              </div>
-            </div>
-
-            <div style={{ textAlign: 'right' }}>
-              <div className="mono" style={{ fontSize: '24px', fontWeight: '800', color: lockTimeLeft < 60 ? '#dc2626' : '#2563eb' }}>
-                {formatTime(lockTimeLeft)}
-              </div>
-              <div style={{ fontSize: '10px', color: '#94a3b8', fontWeight: '600', textTransform: 'uppercase' }}>
-                Time Remaining
-              </div>
-            </div>
-          </div>
-        )}
+        <BookingHoldTimer lockTimeLeft={lockTimeLeft} />
 
         {/* Facility & Bay Confirmation Card */}
         <div className="card" style={{ marginBottom: '20px', padding: '20px 24px' }}>
@@ -260,43 +255,77 @@ export default function BookingPage() {
         {/* Booking Form Card */}
         <form onSubmit={handleBook}>
           <div className="card" style={{ marginBottom: '20px', padding: '24px' }}>
-            <h2 style={{ fontSize: '16px', fontWeight: '700', color: '#0f172a', marginBottom: '18px' }}>
+            <h2 style={{ fontSize: '16px', fontWeight: '700', color: '#0f172a', marginBottom: '16px' }}>
               Reservation Interval & Vehicle Info
             </h2>
 
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-                gap: '16px',
-                marginBottom: '18px'
-              }}
-            >
-              <div>
-                <label className="input-label" htmlFor="start-time">
-                  Arrival Timestamp
+            {/* Quick Duration Presets */}
+            <div style={{ marginBottom: '20px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <label className="input-label" style={{ margin: 0, fontWeight: '600', color: '#334155' }}>
+                  Quick Duration Presets
                 </label>
+                <span style={{ fontSize: '11px', color: '#2563eb', fontWeight: '600' }}>
+                  Current Time + Selected Hours
+                </span>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(75px, 1fr))', gap: '8px' }}>
+                {durationPresets.map((preset) => {
+                  const isActive = selectedPreset === preset.hours;
+                  return (
+                    <button
+                      key={preset.hours}
+                      type="button"
+                      onClick={() => handleQuickSelectDuration(preset.hours)}
+                      style={{
+                        padding: '9px 6px',
+                        borderRadius: '8px',
+                        border: isActive ? '2px solid #2563eb' : '1px solid #cbd5e1',
+                        background: isActive ? '#eff6ff' : '#f8fafc',
+                        color: isActive ? '#1d4ed8' : '#334155',
+                        fontWeight: isActive ? '700' : '600',
+                        fontSize: '13px',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease',
+                        textAlign: 'center',
+                        boxShadow: isActive ? '0 1px 3px rgba(37,99,235,0.2)' : 'none'
+                      }}
+                    >
+                      {preset.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', marginBottom: '18px' }}>
+              <div>
+                <label className="input-label" htmlFor="start-time">Arrival Timestamp</label>
                 <input
                   id="start-time"
                   className="input"
                   type="datetime-local"
                   value={startTime}
-                  onChange={(e) => setStartTime(e.target.value)}
-                  min={new Date().toISOString().slice(0, 16)}
+                  onChange={(e) => {
+                    setStartTime(e.target.value);
+                    setSelectedPreset(null);
+                  }}
+                  min={toLocalInputFormat(new Date())}
                   required
                 />
               </div>
 
               <div>
-                <label className="input-label" htmlFor="end-time">
-                  Departure Timestamp
-                </label>
+                <label className="input-label" htmlFor="end-time">Departure Timestamp</label>
                 <input
                   id="end-time"
                   className="input"
                   type="datetime-local"
                   value={endTime}
-                  onChange={(e) => setEndTime(e.target.value)}
+                  onChange={(e) => {
+                    setEndTime(e.target.value);
+                    setSelectedPreset(null);
+                  }}
                   min={startTime}
                   required
                 />
@@ -304,9 +333,7 @@ export default function BookingPage() {
             </div>
 
             <div style={{ marginBottom: '20px' }}>
-              <label className="input-label" htmlFor="vehicle-number">
-                Vehicle Registration Plate
-              </label>
+              <label className="input-label" htmlFor="vehicle-number">Vehicle Registration Plate</label>
               <input
                 id="vehicle-number"
                 className="input mono"
@@ -319,60 +346,31 @@ export default function BookingPage() {
               />
             </div>
 
+            {/* EV Charging & Concierge Add-ons */}
+            <ConciergeAddonSelector
+              isEvSlot={isEvSlot}
+              enableEvCharging={enableEvCharging}
+              setEnableEvCharging={setEnableEvCharging}
+              selectedAddOns={selectedAddOns}
+              toggleAddOn={toggleAddOn}
+              parkingNotes={parkingNotes}
+              setParkingNotes={setParkingNotes}
+            />
+
             {/* Price Summary Breakdown */}
-            <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13.5px', color: '#64748b', marginBottom: '8px' }}>
-                <span>Duration</span>
-                <span style={{ fontWeight: '600', color: '#0f172a' }}>{durationHours} {durationHours === 1 ? 'Hour' : 'Hours'}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13.5px', color: '#64748b', marginBottom: '8px' }}>
-                <span>Rate Factor</span>
-                <span style={{ fontWeight: '600', color: '#0f172a' }}>{pricing?.multiplier || 1.0}x</span>
-              </div>
-              <div style={{ height: '1px', background: '#e2e8f0', margin: '10px 0' }} />
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '15px', fontWeight: '700', color: '#0f172a' }}>Total Amount</span>
-                <span style={{ fontSize: '22px', fontWeight: '800', color: '#2563eb' }}>
-                  {formatCurrency(totalCost)}
-                </span>
-              </div>
-            </div>
+            <BookingCostSummary
+              durationHours={durationHours}
+              parkingTariff={parkingTariff}
+              addOnsTotal={addOnsTotal}
+              selectedAddOnsCount={selectedAddOns.length}
+              evChargingFee={evChargingFee}
+              multiplier={pricing?.multiplier}
+              totalCost={totalCost}
+            />
           </div>
 
           {/* Payment Method Selector */}
-          <div className="card" style={{ marginBottom: '24px', padding: '24px' }}>
-            <h2 style={{ fontSize: '16px', fontWeight: '700', color: '#0f172a', marginBottom: '16px' }}>
-              Select Payment Authorization
-            </h2>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '12px' }}>
-              {paymentOptions.map((opt) => {
-                const isSelected = paymentMethod === opt.id;
-                return (
-                  <div
-                    key={opt.id}
-                    onClick={() => setPaymentMethod(opt.id)}
-                    style={{
-                      padding: '14px 16px',
-                      borderRadius: '8px',
-                      border: `1.5px solid ${isSelected ? '#2563eb' : '#e2e8f0'}`,
-                      background: isSelected ? '#eff6ff' : '#ffffff',
-                      cursor: 'pointer',
-                      transition: 'all 0.15s ease'
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
-                      <span style={{ fontSize: '14px', fontWeight: '700', color: isSelected ? '#2563eb' : '#0f172a' }}>
-                        {opt.title}
-                      </span>
-                      {isSelected && <IconCheck size={16} color="#2563eb" />}
-                    </div>
-                    <span style={{ fontSize: '12px', color: '#64748b' }}>{opt.desc}</span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+          <PaymentMethodSelector paymentMethod={paymentMethod} setPaymentMethod={setPaymentMethod} />
 
           <button
             type="submit"

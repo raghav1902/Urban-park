@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../utils/api'; // Use existing api instance
+import { IconAlert } from './Icons';
 
 const LOCK_DURATION_MS = 5 * 60 * 1000; // 5 minutes in milliseconds
 
@@ -62,8 +63,8 @@ const SlotLockTimer = ({ slotId, initialTimeLeft, onExpire }) => {
                 <div style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>
                     Time Remaining
                 </div>
-                <div style={{ color: isWarning ? '#ff3b30' : 'var(--text)', fontSize: '14px' }}>
-                    {isWarning && <span style={{ marginRight: '8px' }}>⚠️ Hurry!</span>}
+                <div style={{ color: isWarning ? '#ff3b30' : 'var(--text)', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    {isWarning && <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontWeight: '700' }}><IconAlert size={14} color="#ff3b30" /> Hurry!</span>}
                     Complete payment before timer ends.
                 </div>
             </div>

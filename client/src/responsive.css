@@ -197,3 +197,84 @@
     font-size: 16px !important;
   }
 }
+
+/* Animations for Radar and Soundbox */
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* Print Styling for Digital Smart Ticket */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #printable-urban-ticket, #printable-urban-ticket * {
+    visibility: visible;
+  }
+  #printable-urban-ticket {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 24px;
+    border: 2px solid #0f172a !important;
+    box-shadow: none !important;
+  }
+  nav, button, .mobile-toggle, .mobile-sticky-bottom {
+    display: none !important;
+  }
+}
+
+/* Fuel & EV Station Layout Rules */
+.station-cta-col {
+  text-align: right;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: space-between;
+  min-height: 120px;
+}
+
+.station-btn-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+@media (max-width: 640px) {
+  .station-cta-col {
+    width: 100%;
+    text-align: left;
+    align-items: flex-start;
+    min-height: auto;
+    border-top: 1px solid #f1f5f9;
+    padding-top: 12px;
+    margin-top: 6px;
+  }
+  .station-btn-row {
+    width: 100%;
+  }
+  .nav-map-btn {
+    flex: 1;
+    text-align: center;
+  }
+  .call-btn {
+    flex: 0 0 auto;
+  }
+}
+

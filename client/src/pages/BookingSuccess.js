@@ -4,13 +4,21 @@ import api from '../utils/api';
 import { formatCurrency, formatDate, formatTime } from '../utils/pricing';
 import {
   IconCheckCircle,
-  IconQrCode,
-  IconMapPin,
-  IconCar,
-  IconArrowRight,
+  IconClock,
   IconCalendar,
-  IconShield
+  IconMapPin,
+  IconCreditCard,
+  IconDownload,
+  IconCar,
+  IconQrCode,
+  IconPrinter,
+  IconCompass,
+  IconNavigation
 } from '../components/Icons';
+import IndoorWayfinderModal from '../components/IndoorWayfinderModal';
+import DigitalTicketModal from '../components/booking/DigitalTicketModal';
+import UpiSoundboxWidget from '../components/booking/UpiSoundboxWidget';
+import FindMyCarModal from '../components/parking/FindMyCarModal';
 
 /**
  * Enterprise Booking Confirmation & Gate Pass Voucher
@@ -21,6 +29,9 @@ export default function BookingSuccess() {
   const navigate = useNavigate();
   const [booking, setBooking] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [showWayfinder, setShowWayfinder] = useState(false);
+  const [showDigitalTicket, setShowDigitalTicket] = useState(false);
+  const [showFindCar, setShowFindCar] = useState(false);
 
   useEffect(() => {
     api.get(`/bookings/${id}`)
@@ -74,6 +85,13 @@ export default function BookingSuccess() {
     window.print();
   };
 
+  const isExtended = (booking.extendedHours && booking.extendedHours > 0) || (booking.extensionCount && booking.extensionCount > 0);
+  const extHours = booking.extendedHours || (booking.extensionCount ? booking.extensionCount : 0);
+  const origDuration = booking.originalDuration || (isExtended ? Math.max(1, booking.duration - extHours) : booking.duration);
+  const actualExtHours = booking.duration > origDuration ? booking.duration - origDuration : extHours;
+  const origCost = booking.originalCost != null ? booking.originalCost : (isExtended ? Math.max(0, booking.totalCost - (booking.extendedCost || 0)) : booking.totalCost);
+  const extCost = booking.extendedCost != null ? booking.extendedCost : (isExtended ? Math.max(0, booking.totalCost - origCost) : 0);
+
   const receiptItems = [
     { label: 'Facility Name', value: booking.lotId?.name },
     { label: 'Allocated Bay', value: booking.slotId?.slotNumber, mono: true, highlight: true },
@@ -82,8 +100,43 @@ export default function BookingSuccess() {
     { label: 'Reservation Date', value: formatDate(booking.startTime) },
     { label: 'Arrival Window', value: formatTime(booking.startTime) },
     { label: 'Departure Window', value: formatTime(booking.endTime) },
-    { label: 'Authorized Duration', value: `${booking.duration} ${booking.duration === 1 ? 'Hour' : 'Hours'}` },
-    { label: 'Tariff Paid', value: formatCurrency(booking.totalCost) },
+    ...(isExtended && actualExtHours > 0
+      ? [
+          { label: 'Initial Booked Duration', value: `${origDuration} ${origDuration === 1 ? 'Hour' : 'Hours'}` },
+          {
+            label: 'Extended Duration',
+            value: `+${actualExtHours} ${actualExtHours === 1 ? 'Hour' : 'Hours'} (Extension Pass)`,
+            color: '#2563eb',
+            fontWeight: '700'
+          },
+          {
+            label: 'Total Authorized Duration',
+            value: `${booking.duration} ${booking.duration === 1 ? 'Hour' : 'Hours'}`,
+            highlight: true
+          },
+          ...(extCost > 0
+            ? [
+                { label: 'Initial Base Tariff', value: formatCurrency(origCost) },
+                { label: 'Extension Tariff', value: `+${formatCurrency(extCost)}`, color: '#2563eb', fontWeight: '700' },
+                { label: 'Total Tariff Paid', value: formatCurrency(booking.totalCost), highlight: true }
+              ]
+            : [
+                { label: 'Total Tariff Paid', value: formatCurrency(booking.totalCost), highlight: true }
+              ])
+        ]
+      : [
+          { label: 'Authorized Duration', value: `${booking.duration} ${booking.duration === 1 ? 'Hour' : 'Hours'}` },
+          { label: 'Tariff Paid', value: formatCurrency(booking.totalCost) }
+        ]),
+    ...(booking.evCharging?.enabled
+      ? [{ label: 'EV Smart Charger', value: `${booking.evCharging.chargerType} (Enabled)`, color: '#059669', fontWeight: '700' }]
+      : []),
+    ...(booking.addOnServices && booking.addOnServices.length > 0
+      ? [{ label: 'Vehicle Care Add-ons', value: booking.addOnServices.map((s) => s.name).join(', ') }]
+      : []),
+    ...(booking.parkingNotes
+      ? [{ label: 'Landmark Memo', value: booking.parkingNotes }]
+      : []),
     { label: 'Pass Status', value: booking.status.toUpperCase(), badge: true }
   ];
 
@@ -122,6 +175,15 @@ export default function BookingSuccess() {
         <p style={{ color: '#64748b', fontSize: '15px', marginBottom: '32px' }}>
           Your digital gate pass is active. Present this QR code at the entrance sensor barrier.
         </p>
+
+        {/* UPI Soundbox Announcement Simulation */}
+        <div style={{ marginBottom: '20px' }}>
+          <UpiSoundboxWidget
+            amount={booking.totalCost}
+            slotNumber={booking.slotId?.slotNumber || 'Bay #07'}
+            autoPlay={true}
+          />
+        </div>
 
         {/* QR Code Gate Pass Card */}
         {booking.qrCode && (
@@ -174,22 +236,30 @@ export default function BookingSuccess() {
           </div>
         )}
 
-        {/* Receipt Parameter Breakdown */}
-        <div className="card" style={{ marginBottom: '24px', textAlign: 'left', padding: '24px' }}>
-          <h2
+        {/* Summary Receipt Table */}
+        <div
+          className="card"
+          style={{
+            marginBottom: '24px',
+            textAlign: 'left',
+            padding: '24px',
+            background: '#ffffff'
+          }}
+        >
+          <div
             style={{
-              fontSize: '15px',
+              fontSize: '13px',
               fontWeight: '700',
               color: '#0f172a',
               textTransform: 'uppercase',
-              letterSpacing: '0.04em',
-              marginBottom: '18px',
-              paddingBottom: '12px',
-              borderBottom: '1px solid #e2e8f0'
+              letterSpacing: '0.05em',
+              marginBottom: '16px',
+              borderBottom: '1px solid #e2e8f0',
+              paddingBottom: '10px'
             }}
           >
-            Official Reservation Receipt
-          </h2>
+            Reservation Receipt
+          </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {receiptItems.map((item) => (
@@ -210,8 +280,8 @@ export default function BookingSuccess() {
                   <span
                     style={{
                       fontSize: item.highlight ? '16px' : '14px',
-                      fontWeight: item.highlight ? '800' : '600',
-                      color: item.highlight ? '#2563eb' : '#0f172a',
+                      fontWeight: item.highlight ? '800' : (item.fontWeight || '600'),
+                      color: item.highlight ? '#2563eb' : (item.color || '#0f172a'),
                       fontFamily: item.mono ? 'JetBrains Mono' : 'inherit'
                     }}
                   >
@@ -224,29 +294,89 @@ export default function BookingSuccess() {
         </div>
 
         {/* Action Controls */}
-        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginBottom: '12px' }}>
           <button
             className="btn btn-primary"
-            onClick={() => navigate('/dashboard')}
-            style={{ flex: 1, minWidth: '160px', padding: '12px' }}
+            onClick={() => setShowWayfinder(true)}
+            style={{ flex: 1, minWidth: '220px', padding: '13px', background: '#1d4ed8', fontSize: '14px', fontWeight: '700', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
           >
-            Find Another Zone
+            <IconNavigation size={18} />
+            View Bay Map & Route
+          </button>
+          <button
+            className="btn btn-secondary"
+            onClick={() => setShowFindCar(true)}
+            style={{ flex: 1, minWidth: '180px', padding: '13px', fontSize: '14px', fontWeight: '700', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+          >
+            <IconCompass size={18} color="#2563eb" />
+            Find My Car (Radar)
+          </button>
+        </div>
+
+        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginBottom: '16px' }}>
+          <button
+            onClick={() => setShowDigitalTicket(true)}
+            style={{
+              flex: 1,
+              minWidth: '200px',
+              padding: '13px',
+              background: '#0f172a',
+              color: '#ffffff',
+              border: 'none',
+              borderRadius: '10px',
+              fontSize: '14px',
+              fontWeight: '700',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              boxShadow: '0 4px 12px rgba(15, 23, 42, 0.2)'
+            }}
+          >
+            <IconPrinter size={18} />
+            Digital Smart Ticket (PDF)
           </button>
           <button
             className="btn btn-secondary"
             onClick={() => navigate('/my-bookings')}
-            style={{ flex: 1, minWidth: '160px', padding: '12px' }}
+            style={{ flex: 1, minWidth: '150px', padding: '13px' }}
           >
-            View My Reservations
-          </button>
-          <button
-            className="btn btn-ghost"
-            onClick={handlePrint}
-            style={{ minWidth: '120px', padding: '12px' }}
-          >
-            Print Receipt
+            My Reservations
           </button>
         </div>
+
+        <div style={{ display: 'flex', justifyContent: 'center' }}>
+          <button
+            className="btn btn-ghost"
+            onClick={() => navigate('/dashboard')}
+            style={{ fontSize: '13px' }}
+          >
+            ← Back to Parking Zones
+          </button>
+        </div>
+
+        {/* Indoor Wayfinder Modal */}
+        {showWayfinder && (
+          <IndoorWayfinderModal
+            booking={booking}
+            onClose={() => setShowWayfinder(false)}
+          />
+        )}
+
+        {/* Digital Ticket Modal */}
+        <DigitalTicketModal
+          isOpen={showDigitalTicket}
+          onClose={() => setShowDigitalTicket(false)}
+          booking={booking}
+        />
+
+        {/* Find My Car Modal */}
+        <FindMyCarModal
+          isOpen={showFindCar}
+          onClose={() => setShowFindCar(false)}
+          booking={booking}
+        />
       </div>
     </div>
   );

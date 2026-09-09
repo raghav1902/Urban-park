@@ -6,6 +6,7 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const OTP = require('../models/OTP');
+const redisClient = require('../config/redis');
 
 /**
  * Helper to generate secure 6-digit OTP
@@ -21,38 +22,53 @@ const isValidIndianPhone = (phone) => {
   return Boolean(phone && /^[6-9]\d{9}$/.test(phone.trim()));
 };
 
-// In-memory OTP rate limiter (Zero cost, prevents SMS spam & brute-force abuse)
-const otpRateLimits = new Map();
+/**
+ * Distributed OTP rate limiter using Redis with memoryStore fallback
+ * - Cooldown between consecutive OTP requests (3s in dev, 60s in production)
+ * - Maximum 10 OTP requests in a 10-minute window
+ */
+const checkOtpRateLimit = async (phone) => {
+  const isDevelopment = process.env.NODE_ENV !== 'production';
+  const cooldownDuration = isDevelopment ? 3 : 60;
+  const maxRequests = isDevelopment ? 20 : 5;
 
-const checkOtpRateLimit = (phone) => {
-  const now = Date.now();
-  const entry = otpRateLimits.get(phone);
+  const cooldownKey = `ratelimit:otp:cooldown:${phone}`;
+  const countKey = `ratelimit:otp:count:${phone}`;
 
-  if (!entry) {
-    otpRateLimits.set(phone, { count: 1, firstRequest: now, lastRequest: now });
-    return { allowed: true };
+  const cooldownTtl = await redisClient.ttl(cooldownKey);
+  if (cooldownTtl > 0) {
+    return {
+      allowed: false,
+      message: `Please wait ${cooldownTtl}s before requesting another OTP.`
+    };
   }
 
-  // 60-second cooldown between consecutive requests
-  if (now - entry.lastRequest < 60 * 1000) {
-    const waitSeconds = Math.ceil((60 * 1000 - (now - entry.lastRequest)) / 1000);
-    return { allowed: false, message: `Please wait ${waitSeconds}s before requesting another OTP.` };
+  const currentCount = await redisClient.get(countKey);
+  if (currentCount && parseInt(currentCount, 10) >= maxRequests) {
+    const windowTtl = await redisClient.ttl(countKey);
+    const waitMins = Math.max(1, Math.ceil(windowTtl / 60));
+    return {
+      allowed: false,
+      message: `Too many OTP requests. Please try again after ${waitMins} minute(s).`
+    };
   }
 
-  // Maximum 5 OTP requests in a 10-minute window
-  if (now - entry.firstRequest < 10 * 60 * 1000) {
-    if (entry.count >= 5) {
-      return { allowed: false, message: 'Too many OTP requests. Please try again after 10 minutes.' };
-    }
-    entry.count += 1;
-    entry.lastRequest = now;
-    return { allowed: true };
+  // Set cooldown
+  await redisClient.set(cooldownKey, '1', { EX: cooldownDuration });
+
+  // Increment or initialize 10-minute request counter
+  if (currentCount) {
+    const existingTtl = await redisClient.ttl(countKey);
+    const ttl = existingTtl > 0 ? existingTtl : 600;
+    const newCount = parseInt(currentCount, 10) + 1;
+    await redisClient.set(countKey, String(newCount), { EX: ttl });
+  } else {
+    await redisClient.set(countKey, '1', { EX: 600 });
   }
 
-  // Reset after 10-minute window
-  otpRateLimits.set(phone, { count: 1, firstRequest: now, lastRequest: now });
   return { allowed: true };
 };
+
 
 /**
  * Controller: Send OTP to user phone number
@@ -78,8 +94,8 @@ const sendOTP = async (req, res) => {
       });
     }
 
-    // Apply zero-cost rate limiting check
-    const rateCheck = checkOtpRateLimit(trimmedPhone);
+    // Apply distributed rate limiting check
+    const rateCheck = await checkOtpRateLimit(trimmedPhone);
     if (!rateCheck.allowed) {
       return res.status(429).json({
         success: false,
@@ -103,14 +119,14 @@ const sendOTP = async (req, res) => {
 
     console.log(`📱 [AUTH] OTP for ${trimmedPhone}: ${otp}`);
 
-    const isDevelopment = process.env.NODE_ENV !== 'production';
+    const isDemoAllowed = process.env.NODE_ENV !== 'production' && process.env.ENABLE_DEMO_OTP === 'true';
 
     return res.status(200).json({
       success: true,
       message: 'OTP sent successfully',
       expiresInMinutes: expiryMinutes,
-      // Provide demoOtp in development mode for easy testing
-      demoOtp: isDevelopment ? otp : undefined
+      // Provide demoOtp only if explicitly allowed in development environment
+      demoOtp: isDemoAllowed ? otp : undefined
     });
   } catch (err) {
     console.error('❌ Error in sendOTP:', err);
@@ -140,9 +156,9 @@ const verifyOTP = async (req, res) => {
     const trimmedPhone = phone.trim();
     const trimmedOtp = otp.trim();
 
-    // Only allow fixed master OTP 111111 in development/testing
-    const isDevelopment = process.env.NODE_ENV !== 'production';
-    const isFixedMasterOTP = isDevelopment && trimmedOtp === '111111';
+    // Only allow fixed master OTP 111111 if explicitly enabled in non-production environments
+    const isDemoAllowed = process.env.NODE_ENV !== 'production' && process.env.ENABLE_DEMO_OTP === 'true';
+    const isFixedMasterOTP = isDemoAllowed && trimmedOtp === '111111';
 
     // Verify against database record
     const otpRecord = await OTP.findOne({
@@ -173,24 +189,18 @@ const verifyOTP = async (req, res) => {
     let user = await User.findOne({ phone: trimmedPhone });
     const isNew = !user;
 
-    // Handle new user onboarding
+    // Handle new user onboarding (All new registrations get 'user' role)
     if (!user) {
-      if (!name || name.trim() === '') {
-        return res.status(400).json({
-          success: false,
-          requireName: true,
-          message: 'Full name is required to complete new account registration.'
-        });
-      }
-
+      const userName = (name && name.trim()) ? name.trim() : `User ${trimmedPhone.slice(-4)}`;
       user = await User.create({
         phone: trimmedPhone,
-        name: name.trim(),
-        role: trimmedPhone === '9999999999' ? 'admin' : 'user'
+        name: userName,
+        role: 'user'
       });
     }
 
     const jwtSecret = process.env.JWT_SECRET || 'fallback_secret_urban_park';
+
     const token = jwt.sign(
       { id: user._id, role: user.role },
       jwtSecret,
