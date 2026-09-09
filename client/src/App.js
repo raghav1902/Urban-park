@@ -76,11 +76,6 @@ function AppRoutes() {
     };
 
     socket.on('booking-expiring-soon', handleExpiryNotification);
-    socket.on('notification-alert', (data) => {
-      if (data.userId && data.userId.toString() === userId?.toString()) {
-        handleExpiryNotification(data);
-      }
-    });
 
     return () => socket.disconnect();
   }, [user, navigate]);

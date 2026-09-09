@@ -238,6 +238,10 @@ export const IconRefresh = ({ size = 18, color = 'currentColor', className = '' 
   <RefreshCw size={size} color={color} className={className} />
 );
 
+export const IconNavigation = ({ size = 18, color = 'currentColor', className = '' }) => (
+  <Navigation size={size} color={color} className={className} />
+);
+
 // Also direct export raw Lucide icons for rich composite usage
 export {
   Car,

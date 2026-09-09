@@ -33,7 +33,7 @@ export default function ParkingLotCard({ lot, occupancy, pricing }) {
             <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#0f172a', margin: 0 }}>
               {lot.name}
             </h3>
-            {lot.isCommunityHost && (
+            {lot.isCommunityHost ? (
               <span style={{
                 background: '#fef3c7',
                 color: '#92400e',
@@ -47,6 +47,36 @@ export default function ParkingLotCard({ lot, occupancy, pricing }) {
                 gap: '4px'
               }}>
                 <IconHome size={12} /> Verified Resident Host
+              </span>
+            ) : lot._id?.toString().startsWith('osm-park-') ? (
+              <span style={{
+                background: '#f1f5f9',
+                color: '#475569',
+                border: '1px solid #cbd5e1',
+                padding: '2px 8px',
+                borderRadius: '12px',
+                fontSize: '11px',
+                fontWeight: '700',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px'
+              }}>
+                Municipal Street Bay • Pay at Booth
+              </span>
+            ) : (
+              <span style={{
+                background: '#ecfdf5',
+                color: '#065f46',
+                border: '1px solid #a7f3d0',
+                padding: '2px 8px',
+                borderRadius: '12px',
+                fontSize: '11px',
+                fontWeight: '700',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px'
+              }}>
+                Smart FastTrack Bay • QR Gate
               </span>
             )}
             {pricing.label !== 'Normal' && (
@@ -134,27 +164,54 @@ export default function ParkingLotCard({ lot, occupancy, pricing }) {
 
         {/* Action CTA & Navigation */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', minWidth: '160px' }}>
-          <Link to={`/lot/${lot._id}`} style={{ textDecoration: 'none' }}>
-            <button
-              className="btn btn-primary"
-              disabled={isFull}
-              style={{ width: '100%', padding: '10px 18px', fontWeight: '700' }}
-            >
-              {isFull ? 'Capacity Reached' : 'Inspect Slots'}
-              <IconArrowRight size={15} />
-            </button>
-          </Link>
+          {lot._id?.toString().startsWith('osm-park-') ? (
+            <>
+              {lot.googleMapsUrl && (
+                <a
+                  href={lot.googleMapsUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn btn-primary"
+                  style={{ padding: '10px 16px', fontSize: '13px', fontWeight: '700', textDecoration: 'none', textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                >
+                  <IconNavigation size={14} /> Drive-In Navigation ↗
+                </a>
+              )}
+              <Link to={`/lot/${lot._id}`} style={{ textDecoration: 'none' }}>
+                <button
+                  className="btn btn-secondary"
+                  style={{ width: '100%', padding: '8px 14px', fontSize: '12px', fontWeight: '600' }}
+                >
+                  View Layout Info
+                  <IconArrowRight size={13} />
+                </button>
+              </Link>
+            </>
+          ) : (
+            <>
+              <Link to={`/lot/${lot._id}`} style={{ textDecoration: 'none' }}>
+                <button
+                  className="btn btn-primary"
+                  disabled={isFull}
+                  style={{ width: '100%', padding: '10px 18px', fontWeight: '700' }}
+                >
+                  {isFull ? 'Capacity Reached' : 'Reserve Bay'}
+                  <IconArrowRight size={15} />
+                </button>
+              </Link>
 
-          {lot.googleMapsUrl && (
-            <a
-              href={lot.googleMapsUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="btn btn-secondary"
-              style={{ padding: '8px 14px', fontSize: '12px', fontWeight: '700', textDecoration: 'none', textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
-            >
-              <IconNavigation size={13} /> Navigate in Maps ↗
-            </a>
+              {lot.googleMapsUrl && (
+                <a
+                  href={lot.googleMapsUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn btn-secondary"
+                  style={{ padding: '8px 14px', fontSize: '12px', fontWeight: '700', textDecoration: 'none', textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                >
+                  <IconNavigation size={13} /> Navigate in Maps ↗
+                </a>
+              )}
+            </>
           )}
         </div>
       </div>

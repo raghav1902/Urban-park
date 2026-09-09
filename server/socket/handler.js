@@ -120,14 +120,8 @@ module.exports = (io) => {
           message: `⚠️ Attention: Your parking reservation at ${booking.lotId?.name || 'Facility'} (Slot ${booking.slotId?.slotNumber || ''}) expires in ${remainingMinutes} minute(s)! Extend now to avoid overstay charges.`
         };
 
-        // Emit to user's private socket room
+        // Emit strictly to user's private socket room (secures PII & vehicle info)
         io.to(`user-${booking.userId}`).emit('booking-expiring-soon', alertPayload);
-
-        // Broadcast notification alert targeted by userId for global listeners
-        io.emit('notification-alert', {
-          userId: booking.userId,
-          ...alertPayload
-        });
 
         console.log(`🔔 Sent 15-min expiry reminder for Booking ${booking._id} to User ${booking.userId}`);
       }
