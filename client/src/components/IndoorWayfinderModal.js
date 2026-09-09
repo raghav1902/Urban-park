@@ -29,10 +29,10 @@ export default function IndoorWayfinderModal({ booking, onClose }) {
     setSavingNote(true);
     try {
       await api.patch(`/bookings/${booking._id}/notes`, { notes });
-      toast.success('Pillar / Landmark memo saved!');
+      toast.success('Pillar / Landmark memo saved!', { toastId: 'landmark-memo-saved' });
       booking.parkingNotes = notes;
     } catch (err) {
-      toast.error('Failed to save parking memo.');
+      toast.error('Failed to save parking memo.', { toastId: 'landmark-memo-error' });
     } finally {
       setSavingNote(false);
     }
@@ -277,8 +277,8 @@ export default function IndoorWayfinderModal({ booking, onClose }) {
 
         {/* Parking Landmark Memo */}
         <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '16px' }}>
-          <label style={{ fontSize: '12.5px', fontWeight: '700', color: '#334155', display: 'block', marginBottom: '6px' }}>
-            📌 Parking Landmark / Pillar Memo:
+          <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12.5px', fontWeight: '700', color: '#334155', marginBottom: '6px' }}>
+            <IconMapPin size={14} color="#2563eb" /> Parking Landmark / Pillar Memo:
           </label>
           <div style={{ display: 'flex', gap: '10px' }}>
             <input

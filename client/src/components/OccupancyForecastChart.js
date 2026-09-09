@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { IconClock, IconZap, IconShield } from './Icons';
+import { IconClock, IconZap, IconShield, IconSparkles, IconAlert } from './Icons';
 
 /**
  * Enterprise AI Occupancy Forecast & Rush Hour Predictor
@@ -168,7 +168,7 @@ export default function OccupancyForecastChart({ lotName }) {
       {/* AI Smart Insights Callouts */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '10px' }}>
         <div style={{ padding: '10px 14px', background: '#ecfdf5', borderRadius: '8px', border: '1px solid #a7f3d0', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ fontSize: '16px' }}>💡</span>
+          <IconSparkles size={18} color="#047857" />
           <div>
             <div style={{ fontSize: '11px', textTransform: 'uppercase', fontWeight: '700', color: '#047857' }}>
               Optimal Off-Peak Window
@@ -180,7 +180,7 @@ export default function OccupancyForecastChart({ lotName }) {
         </div>
 
         <div style={{ padding: '10px 14px', background: '#fff1f2', borderRadius: '8px', border: '1px solid #fecdd3', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ fontSize: '16px' }}>⚠️</span>
+          <IconAlert size={18} color="#b91c1c" />
           <div>
             <div style={{ fontSize: '11px', textTransform: 'uppercase', fontWeight: '700', color: '#b91c1c' }}>
               Peak Congestion Window

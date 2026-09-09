@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { formatCurrency } from '../../utils/pricing';
-import { IconMapPin, IconArrowRight } from '../Icons';
+import { IconMapPin, IconArrowRight, IconHome, IconNavigation } from '../Icons';
 
 /**
  * Individual Parking Lot Card with live availability telemetry
@@ -30,17 +30,41 @@ export default function ParkingLotCard({ lot, occupancy, pricing }) {
       >
         <div style={{ flex: 1, minWidth: '260px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px', flexWrap: 'wrap' }}>
-            <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#0f172a' }}>
+            <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#0f172a', margin: 0 }}>
               {lot.name}
             </h3>
+            {lot.isCommunityHost && (
+              <span style={{
+                background: '#fef3c7',
+                color: '#92400e',
+                border: '1px solid #fde68a',
+                padding: '2px 8px',
+                borderRadius: '12px',
+                fontSize: '11px',
+                fontWeight: '800',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px'
+              }}>
+                <IconHome size={12} /> Verified Resident Host
+              </span>
+            )}
             {pricing.label !== 'Normal' && (
               <span className={`badge ${pricing.label === 'Peak' ? 'badge-red' : 'badge-blue'}`}>
                 {pricing.label} Rate
               </span>
             )}
             {lot.distanceKm !== undefined && (
-              <span style={{ fontSize: '12.5px', fontWeight: '800', color: '#2563eb' }}>
-                📍 {lot.distanceKm} km away
+              <span style={{
+                fontSize: '12px',
+                fontWeight: '700',
+                color: '#2563eb',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '3px'
+              }}>
+                <IconMapPin size={12} color="#2563eb" />
+                {lot.distanceKm} km away
               </span>
             )}
           </div>
@@ -127,9 +151,9 @@ export default function ParkingLotCard({ lot, occupancy, pricing }) {
               target="_blank"
               rel="noopener noreferrer"
               className="btn btn-secondary"
-              style={{ padding: '8px 14px', fontSize: '12px', fontWeight: '700', textDecoration: 'none', textAlign: 'center' }}
+              style={{ padding: '8px 14px', fontSize: '12px', fontWeight: '700', textDecoration: 'none', textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
             >
-              🗺️ Navigate in Maps ↗
+              <IconNavigation size={13} /> Navigate in Maps ↗
             </a>
           )}
         </div>

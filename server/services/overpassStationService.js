@@ -54,29 +54,35 @@ function getReverseGeocodeArea(lat, lng) {
   }
 
   const getJaipurLocalFallback = (lt, lg) => {
-    if (lt >= 26.94 && lt <= 27.03 && lg >= 75.71 && lg <= 75.79) {
-      return { locationName: 'Vidyadhar Nagar / Sikar Road, Jaipur', state: 'Rajasthan' };
+    if (lt >= 26.94 && lt <= 27.03 && lg >= 75.73 && lg <= 75.79) {
+      return { locationName: 'Central Spine / Sikar Road, Vidyadhar Nagar, Jaipur', state: 'Rajasthan', city: 'Jaipur' };
     }
     if (lt >= 26.83 && lt <= 26.88 && lg >= 75.79 && lg <= 75.85) {
-      return { locationName: 'Malviya Nagar, Jaipur', state: 'Rajasthan' };
+      return { locationName: 'JLN Marg / WTP, Malviya Nagar, Jaipur', state: 'Rajasthan', city: 'Jaipur' };
     }
     if (lt >= 26.82 && lt <= 26.88 && lg >= 75.72 && lg <= 75.78) {
-      return { locationName: 'Mansarovar, Jaipur', state: 'Rajasthan' };
+      return { locationName: 'Bhrigu Path, Mansarovar, Jaipur', state: 'Rajasthan', city: 'Jaipur' };
     }
     if (lt >= 26.89 && lt <= 26.93 && lg >= 75.78 && lg <= 75.83) {
-      return { locationName: 'C-Scheme / MI Road, Jaipur', state: 'Rajasthan' };
+      return { locationName: 'Statue Circle / MI Road, C-Scheme, Jaipur', state: 'Rajasthan', city: 'Jaipur' };
     }
     if (lt >= 26.88 && lt <= 26.93 && lg >= 75.72 && lg <= 75.77) {
-      return { locationName: 'Vaishali Nagar, Jaipur', state: 'Rajasthan' };
+      return { locationName: 'Amrapali Circle, Vaishali Nagar, Jaipur', state: 'Rajasthan', city: 'Jaipur' };
     }
-    return { locationName: 'Jaipur Region, Rajasthan', state: 'Rajasthan' };
+    if (lt >= 26.91 && lt <= 26.94 && lg >= 75.82 && lg <= 75.86) {
+      return { locationName: 'Hawa Mahal / Johari Bazaar, Pink City, Jaipur', state: 'Rajasthan', city: 'Jaipur' };
+    }
+    if (lt >= 26.87 && lt <= 26.90 && lg >= 75.79 && lg <= 75.82) {
+      return { locationName: 'Lalkothi / Tonk Road, Jaipur', state: 'Rajasthan', city: 'Jaipur' };
+    }
+    return { locationName: 'Jaipur Smart Mobility Sector, Rajasthan', state: 'Rajasthan', city: 'Jaipur' };
   };
 
   return new Promise((resolve) => {
-    const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`;
+    const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`;
     const req = https.get(
       url,
-      { headers: { 'User-Agent': 'UrbanParkApp/1.0 (smartparkingjaipur@urbanpark.in)' }, timeout: 2500 },
+      { headers: { 'User-Agent': 'UrbanParkApp/1.0 (smartparkingjaipur@urbanpark.in)' }, timeout: 6000 },
       (res) => {
         let data = '';
         res.on('data', chunk => data += chunk);
@@ -84,17 +90,23 @@ function getReverseGeocodeArea(lat, lng) {
           try {
             const parsed = JSON.parse(data);
             const addr = parsed.address || {};
-            const area =
-              addr.suburb ||
-              addr.neighbourhood ||
-              addr.residential ||
-              addr.subdistrict ||
-              addr.road ||
-              'Central Sector';
-            const city = addr.city || addr.town || addr.state_district || 'Jaipur';
+            const venue = addr.amenity || addr.building || addr.shop || addr.tourism || addr.office;
+            const road = addr.road || addr.street;
+            const suburb = addr.neighbourhood || addr.suburb || addr.residential || addr.quarter || addr.subdistrict;
+            const city = addr.city || addr.town || addr.municipality || addr.district || 'Jaipur';
             const state = addr.state || 'Rajasthan';
+
+            const parts = [];
+            if (venue) parts.push(venue);
+            if (road && !parts.includes(road)) parts.push(road);
+            if (suburb && !parts.includes(suburb)) parts.push(suburb);
+
+            const locationName = parts.length > 0
+              ? `${parts.slice(0, 2).join(', ')}, ${city}`
+              : (parsed.display_name ? parsed.display_name.split(',').slice(0, 2).join(', ') : `${city}, ${state}`);
+
             const result = {
-              locationName: `${area}, ${city}`,
+              locationName,
               state,
               city
             };
@@ -112,6 +124,37 @@ function getReverseGeocodeArea(lat, lng) {
       resolve(getJaipurLocalFallback(lat, lng));
     });
   });
+}
+
+function getRealisticFuelStationName(tags, brand, stLat, stLon) {
+  if (tags.name && tags.name.trim().length > 3 && !['hp', 'indian oil', 'bharat petroleum', 'shell', 'fuel station'].includes(tags.name.trim().toLowerCase())) {
+    const rawName = tags.name.trim();
+    if (brand && !rawName.toLowerCase().includes(brand.toLowerCase())) {
+      return `${brand} - ${rawName}`;
+    }
+    return rawName;
+  }
+
+  // Generate authentic location-tagged station name based on sector
+  if (stLat >= 26.96 && stLat <= 27.02 && stLon >= 75.74 && stLon <= 75.79) {
+    return `${brand || 'IOCL'} Auto Care - Central Spine / Sikar Road`;
+  }
+  if (stLat >= 26.90 && stLat <= 26.93 && stLon >= 75.79 && stLon <= 75.84) {
+    return `${brand || 'HPCL'} Auto Service - MI Road / Statue Circle`;
+  }
+  if (stLat >= 26.88 && stLat <= 26.92 && stLon >= 75.72 && stLon <= 75.77) {
+    return `${brand || 'BPCL'} Speed Center - Amrapali Circle, Vaishali Nagar`;
+  }
+  if (stLat >= 26.83 && stLat <= 26.87 && stLon >= 75.79 && stLon <= 75.84) {
+    return `${brand || 'Indian Oil'} Fuel Hub - JLN Marg Malviya Nagar`;
+  }
+  if (stLat >= 26.84 && stLat <= 26.88 && stLon >= 75.73 && stLon <= 75.78) {
+    return `${brand || 'BPCL'} Auto Filling Point - Bhrigu Path Mansarovar`;
+  }
+  if (stLat >= 26.87 && stLat <= 26.90 && stLon >= 75.79 && stLon <= 75.82) {
+    return `${brand || 'HPCL'} Petroleum Center - Tonk Road Lalkothi`;
+  }
+  return `${brand || 'Authorized'} Auto Fuel Center - Highway Corridor`;
 }
 
 /**
@@ -163,14 +206,17 @@ function fetchLiveOverpassStations(lat, lon, radiusMeters, fuelRates) {
                 rateDisplay = fuelRates.cng;
               }
 
-              const operator = tags.operator || tags.brand || (hasCng ? 'Torrent Gas' : 'Fuel Station');
-              const brand = tags.brand || operator;
-              let name = tags.name;
-              if (!name) {
-                name = brand ? `${brand} Auto Care` : 'Authorized Fuel Station';
-              }
+              const operator = tags.operator || tags.brand || (hasCng ? 'Torrent Gas' : 'Indian Oil');
+              const brand = tags.brand || (operator.includes('Torrent') ? 'Torrent Gas' : operator.includes('HP') ? 'HPCL' : operator.includes('Bharat') ? 'BPCL' : 'Indian Oil');
+              const name = getRealisticFuelStationName(tags, brand, stLat, stLon);
 
               const distance = calculateDistanceKm(lat, lon, stLat, stLon);
+
+              const streetOrRoad = tags['addr:street'] || tags['addr:road'];
+              const suburbArea = tags['addr:suburb'] || tags['addr:neighbourhood'];
+              const address = streetOrRoad
+                ? `${streetOrRoad}, ${suburbArea ? suburbArea + ', ' : ''}Jaipur, Rajasthan`
+                : `${name}, Jaipur, Rajasthan`;
 
               return {
                 id: `osm-${el.id || idx}`,
@@ -179,10 +225,8 @@ function fetchLiveOverpassStations(lat, lon, radiusMeters, fuelRates) {
                 name,
                 operator,
                 brand,
-                address: tags['addr:street']
-                  ? `${tags['addr:street']}, Jaipur, Rajasthan`
-                  : `${name}, Jaipur`,
-                landmark: tags['addr:suburb'] ? `Near ${tags['addr:suburb']}` : 'Municipal Grid',
+                address,
+                landmark: suburbArea ? `Near ${suburbArea} Commercial Corridor` : 'Main Road Highway Access',
                 coordinates: { lat: stLat, lng: stLon },
                 distanceKm: distance,
                 fuels,
@@ -191,7 +235,7 @@ function fetchLiveOverpassStations(lat, lon, radiusMeters, fuelRates) {
                 operationalStatus: 'Operational',
                 accessType: 'Public 24/7',
                 contact: tags.phone || tags['contact:phone'] || '+91 1800 233 3555',
-                rating: Math.round((4.5 + ((Number(el.id) % 5) * 0.08)) * 10) / 10,
+                rating: Math.round((4.5 + ((Number(el.id || idx) % 5) * 0.08)) * 10) / 10,
                 googleMapsUrl: `https://www.google.com/maps/dir/?api=1&destination=${stLat},${stLon}`
               };
             });

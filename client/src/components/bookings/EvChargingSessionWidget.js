@@ -1,4 +1,5 @@
 import React from 'react';
+import { IconZap } from '../Icons';
 
 /**
  * Smart EV Charging Session Telemetry Widget
@@ -21,7 +22,7 @@ export default function EvChargingSessionWidget({ booking, togglingEvId, onToggl
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ fontSize: '18px' }}>⚡</span>
+          <IconZap size={18} color="#059669" />
           <div>
             <div style={{ fontSize: '13.5px', fontWeight: '800', color: '#065f46' }}>
               Smart EV Charging Session • {ev.chargerType || 'Type-2 22kW'}

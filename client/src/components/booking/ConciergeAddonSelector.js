@@ -1,5 +1,6 @@
 import React from 'react';
 import { formatCurrency } from '../../utils/pricing';
+import { IconZap, IconSparkles } from '../Icons';
 
 export const CONCIERGE_SERVICES = [
   { id: 'wash', name: 'Eco Waterless Car Wash', price: 199, desc: 'Hand-detailed scratch-free exterior bio-cleaning' },
@@ -25,7 +26,7 @@ export default function ConciergeAddonSelector({
       {isEvSlot && (
         <div
           style={{
-            marginBottom: '20px',
+            marginBottom: '16px',
             padding: '14px 16px',
             background: enableEvCharging ? '#eff6ff' : '#f8fafc',
             border: enableEvCharging ? '2px solid #2563eb' : '1px solid #e2e8f0',
@@ -44,8 +45,8 @@ export default function ConciergeAddonSelector({
                 style={{ width: '18px', height: '18px', accentColor: '#2563eb' }}
               />
               <div>
-                <div style={{ fontSize: '14px', fontWeight: '700', color: '#0f172a' }}>
-                  ⚡ Activate EV Smart Charging (Type-2 22kW AC)
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '14px', fontWeight: '700', color: '#0f172a' }}>
+                  <IconZap size={15} color="#2563eb" /> Activate EV Smart Charging (Type-2 22kW AC)
                 </div>
                 <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>
                   Smart connector auto-initializes upon bay sensor vehicle lock
@@ -62,8 +63,8 @@ export default function ConciergeAddonSelector({
       {/* Smart Concierge & Vehicle Care Add-ons */}
       <div style={{ marginBottom: '20px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-          <span style={{ fontSize: '13px', fontWeight: '700', color: '#334155', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
-            🧼 Smart Concierge & Vehicle Care Add-ons
+          <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: '700', color: '#334155', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+            <IconSparkles size={14} color="#0284c7" /> Smart Concierge & Vehicle Care Add-ons
           </span>
           <span style={{ fontSize: '11px', color: '#64748b' }}>Fulfilled while parked</span>
         </div>

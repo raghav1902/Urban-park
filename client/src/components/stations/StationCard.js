@@ -1,10 +1,19 @@
 import React from 'react';
+import {
+  IconZap,
+  IconLeaf,
+  IconFuel,
+  IconMapPin,
+  IconStar,
+  IconNavigation,
+  IconPhone
+} from '../Icons';
 
 export const getCategoryConfig = (category) => {
   switch (category) {
     case 'ev':
       return {
-        icon: '⚡',
+        renderIcon: (props) => <IconZap {...props} />,
         label: 'EV Fast Charging',
         badgeBg: '#eff6ff',
         badgeBorder: '#bfdbfe',
@@ -13,7 +22,7 @@ export const getCategoryConfig = (category) => {
       };
     case 'cng':
       return {
-        icon: '🌿',
+        renderIcon: (props) => <IconLeaf {...props} />,
         label: 'CNG Gas Station',
         badgeBg: '#ecfdf5',
         badgeBorder: '#a7f3d0',
@@ -22,7 +31,7 @@ export const getCategoryConfig = (category) => {
       };
     case 'petrol':
       return {
-        icon: '⛽',
+        renderIcon: (props) => <IconFuel {...props} />,
         label: 'Petrol & Diesel Pump',
         badgeBg: '#fffbeb',
         badgeBorder: '#fde68a',
@@ -31,7 +40,7 @@ export const getCategoryConfig = (category) => {
       };
     default:
       return {
-        icon: '📍',
+        renderIcon: (props) => <IconMapPin {...props} />,
         label: 'Energy Station',
         badgeBg: '#f1f5f9',
         badgeBorder: '#cbd5e1',
@@ -65,6 +74,9 @@ export default function StationCard({ station }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', flexWrap: 'wrap' }}>
             <span
               style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '5px',
                 padding: '3px 9px',
                 borderRadius: '6px',
                 background: catConfig.badgeBg,
@@ -75,6 +87,7 @@ export default function StationCard({ station }) {
                 textTransform: 'uppercase'
               }}
             >
+              {catConfig.renderIcon({ size: 12, color: catConfig.badgeText })}
               {station.categoryLabel || catConfig.label}
             </span>
 
@@ -92,8 +105,8 @@ export default function StationCard({ station }) {
               {station.brand || station.operator}
             </span>
 
-            <span style={{ fontSize: '12px', color: '#f59e0b', fontWeight: '700' }}>
-              ★ {station.rating}
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', fontSize: '12px', color: '#f59e0b', fontWeight: '700' }}>
+              <IconStar size={13} color="#f59e0b" fill="#f59e0b" /> {station.rating}
             </span>
 
             <span style={{ fontSize: '12px', color: '#059669', fontWeight: '600' }}>
@@ -105,23 +118,27 @@ export default function StationCard({ station }) {
             {station.name}
           </h3>
 
-          <div style={{ fontSize: '13px', color: '#475569', marginBottom: '4px' }}>
-            📍 {station.address}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: '#475569', marginBottom: '4px' }}>
+            <IconMapPin size={14} color="#64748b" style={{ flexShrink: 0 }} />
+            <span>{station.address}</span>
           </div>
 
           {station.landmark && (
-            <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '12px' }}>
+            <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '12px', paddingLeft: '20px' }}>
               Landmark: <strong>{station.landmark}</strong>
             </div>
           )}
 
           {/* Fuels / Dispensers List */}
           {station.fuels && station.fuels.length > 0 && (
-            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '10px' }}>
               {station.fuels.map((fuelItem, idx) => (
                 <span
                   key={idx}
                   style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
                     fontSize: '11px',
                     fontWeight: '600',
                     padding: '3px 8px',
@@ -131,7 +148,8 @@ export default function StationCard({ station }) {
                     border: '1px solid #e2e8f0'
                   }}
                 >
-                  {catConfig.icon} {fuelItem}
+                  {catConfig.renderIcon({ size: 11, color: catConfig.accentColor })}
+                  {fuelItem}
                 </span>
               ))}
             </div>
@@ -157,6 +175,9 @@ export default function StationCard({ station }) {
               rel="noopener noreferrer"
               className="btn btn-primary nav-map-btn"
               style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
                 padding: '8px 16px',
                 fontSize: '12.5px',
                 fontWeight: '700',
@@ -165,16 +186,23 @@ export default function StationCard({ station }) {
                 borderColor: catConfig.accentColor
               }}
             >
-              🗺️ Navigate in Maps ↗
+              <IconNavigation size={13} color="#ffffff" /> Navigate in Maps ↗
             </a>
 
             {station.contact && (
               <a
                 href={`tel:${station.contact.replace(/\s/g, '')}`}
                 className="btn btn-secondary call-btn"
-                style={{ padding: '8px 12px', fontSize: '12.5px', textDecoration: 'none' }}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '8px 12px',
+                  fontSize: '12.5px',
+                  textDecoration: 'none'
+                }}
               >
-                📞 Call
+                <IconPhone size={13} color="#475569" /> Call
               </a>
             )}
           </div>

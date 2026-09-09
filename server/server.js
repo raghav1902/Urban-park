@@ -58,6 +58,7 @@ app.use('/api/parking', require('./routes/parking'));
 app.use('/api/bookings', require('./routes/bookings'));
 app.use('/api/admin', require('./routes/admin'));
 app.use('/api/ev-stations', require('./routes/evStations'));
+app.use('/api/parking/community', require('./routes/communityParking'));
 
 // Real-time Socket.io IoT sensor simulation
 require('./socket/handler')(io);

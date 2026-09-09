@@ -10,18 +10,26 @@ import {
   IconBuilding,
   IconCalendar,
   IconBarChart,
-  IconZap
+  IconZap,
+  IconHome,
+  IconCompass,
+  IconBatteryCharging
 } from './Icons';
+import FindMyCarModal from './parking/FindMyCarModal';
+import EvChargeCalculatorModal from './stations/EvChargeCalculatorModal';
+import MobileNavDrawer from './navbar/MobileNavDrawer';
 
 /**
  * Enterprise Navbar Component
- * Fully responsive with mobile drawer, zero emojis, and executive white palette
+ * Fully responsive with Lucide icons, P2P Rent Space, Find My Car & EV Calculator
  */
 export default function Navbar() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isCarModalOpen, setIsCarModalOpen] = useState(false);
+  const [isEvCalcOpen, setIsEvCalcOpen] = useState(false);
 
   const handleLogout = () => {
     logout();
@@ -33,11 +41,13 @@ export default function Navbar() {
     ? [
         { to: '/admin', label: 'Admin Overview', icon: <IconBarChart size={16} /> },
         { to: '/admin/bookings', label: 'Global Bookings', icon: <IconCalendar size={16} /> },
-        { to: '/ev-stations', label: 'Fuel & EV Stations', icon: <IconZap size={16} /> }
+        { to: '/ev-stations', label: 'Fuel & EV Stations', icon: <IconZap size={16} /> },
+        { to: '/rent-space', label: 'Rent Space (P2P)', icon: <IconHome size={16} /> }
       ]
     : [
         { to: '/dashboard', label: 'Parking Zones', icon: <IconBuilding size={16} /> },
         { to: '/ev-stations', label: 'Fuel & EV Stations', icon: <IconZap size={16} /> },
+        { to: '/rent-space', label: 'Rent Space (P2P)', icon: <IconHome size={16} /> },
         { to: '/my-bookings', label: 'My Reservations', icon: <IconCalendar size={16} /> }
       ];
 
@@ -156,12 +166,54 @@ export default function Navbar() {
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: '12px',
+                gap: '10px',
                 marginLeft: '12px',
                 paddingLeft: '14px',
                 borderLeft: '1px solid #e2e8f0'
               }}
             >
+              <button
+                onClick={() => setIsCarModalOpen(true)}
+                title="Find My Parked Car"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  background: '#f1f5f9',
+                  border: '1px solid #cbd5e1',
+                  borderRadius: '8px',
+                  padding: '6px 12px',
+                  fontSize: '12.5px',
+                  fontWeight: '600',
+                  color: '#1e293b',
+                  cursor: 'pointer'
+                }}
+              >
+                <IconCompass size={15} color="#2563eb" />
+                Find Car
+              </button>
+
+              <button
+                onClick={() => setIsEvCalcOpen(true)}
+                title="EV Battery & Charging Calculator"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  background: '#ecfdf5',
+                  border: '1px solid #a7f3d0',
+                  borderRadius: '8px',
+                  padding: '6px 12px',
+                  fontSize: '12.5px',
+                  fontWeight: '600',
+                  color: '#065f46',
+                  cursor: 'pointer'
+                }}
+              >
+                <IconBatteryCharging size={15} color="#10b981" />
+                EV Calc
+              </button>
+
               <div
                 style={{
                   display: 'flex',
@@ -241,117 +293,26 @@ export default function Navbar() {
       </nav>
 
       {/* Mobile Drawer */}
-      {mobileMenuOpen && (
-        <div
-          style={{
-            position: 'fixed',
-            top: '64px',
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'rgba(15, 23, 42, 0.4)',
-            backdropFilter: 'blur(4px)',
-            zIndex: 999
-          }}
-          onClick={closeMobile}
-        >
-          <div
-            style={{
-              background: '#ffffff',
-              borderBottom: '1px solid #e2e8f0',
-              padding: '20px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '12px',
-              boxShadow: '0 10px 25px rgba(0,0,0,0.1)'
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            {user && (
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '10px',
-                  paddingBottom: '14px',
-                  borderBottom: '1px solid #f1f5f9'
-                }}
-              >
-                <div
-                  style={{
-                    width: '36px',
-                    height: '36px',
-                    borderRadius: '50%',
-                    background: '#eff6ff',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                  }}
-                >
-                  <IconUser size={18} color="#2563eb" />
-                </div>
-                <div>
-                  <div style={{ fontWeight: '600', color: '#0f172a' }}>{user.name}</div>
-                  <div style={{ fontSize: '12px', color: '#64748b' }}>{user.phone}</div>
-                </div>
-              </div>
-            )}
+      <MobileNavDrawer
+        isOpen={mobileMenuOpen}
+        onClose={closeMobile}
+        user={user}
+        navLinks={navLinks}
+        onLogout={handleLogout}
+        onOpenFindCar={() => setIsCarModalOpen(true)}
+        onOpenEvCalc={() => setIsEvCalcOpen(true)}
+      />
 
-            {user &&
-              navLinks.map((link) => (
-                <Link
-                  key={link.to}
-                  to={link.to}
-                  onClick={closeMobile}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '10px',
-                    padding: '12px 14px',
-                    borderRadius: '8px',
-                    textDecoration: 'none',
-                    fontWeight: '500',
-                    color: location.pathname === link.to ? '#2563eb' : '#334155',
-                    background: location.pathname === link.to ? '#eff6ff' : 'transparent'
-                  }}
-                >
-                  {link.icon}
-                  {link.label}
-                </Link>
-              ))}
+      {/* Quick Access Feature Modals */}
+      <FindMyCarModal
+        isOpen={isCarModalOpen}
+        onClose={() => setIsCarModalOpen(false)}
+      />
 
-            {user ? (
-              <button
-                onClick={handleLogout}
-                className="btn btn-secondary"
-                style={{ width: '100%', marginTop: '8px' }}
-              >
-                <IconLogOut size={16} />
-                Sign Out
-              </button>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                <Link
-                  to="/login"
-                  onClick={closeMobile}
-                  className="btn btn-secondary"
-                  style={{ width: '100%' }}
-                >
-                  Sign In
-                </Link>
-                <Link
-                  to="/login"
-                  onClick={closeMobile}
-                  className="btn btn-primary"
-                  style={{ width: '100%' }}
-                >
-                  Get Started
-                </Link>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+      <EvChargeCalculatorModal
+        isOpen={isEvCalcOpen}
+        onClose={() => setIsEvCalcOpen(false)}
+      />
 
       {/* Style for mobile nav responsive display */}
       <style>{`

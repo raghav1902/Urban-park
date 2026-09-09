@@ -4,6 +4,8 @@ import { toast } from 'react-toastify';
 import FuelRateTicker from '../components/stations/FuelRateTicker';
 import LocationSearchBar from '../components/stations/LocationSearchBar';
 import StationCard from '../components/stations/StationCard';
+import EvChargeCalculatorModal from '../components/stations/EvChargeCalculatorModal';
+import { IconBatteryCharging, IconFuel, IconZap, IconSparkles, IconGlobe, IconLeaf, IconNavigation } from '../components/Icons';
 
 /**
  * Multi-Fuel & EV Infrastructure Discovery Page
@@ -16,8 +18,10 @@ export default function EVStationsNearby() {
   const [locationSource, setLocationSource] = useState('Central Sector');
   const [locationAreaName, setLocationAreaName] = useState('Detecting Your Location...');
   const [gpsLoading, setGpsLoading] = useState(false);
+  const [gpsAccuracy, setGpsAccuracy] = useState(null);
   const [searchCityQuery, setSearchCityQuery] = useState('');
   const [searchCityLoading, setSearchCityLoading] = useState(false);
+  const [isCalcOpen, setIsCalcOpen] = useState(false);
   const [fuelRates, setFuelRates] = useState({
     petrol: '₹104.88 / L',
     diesel: '₹90.36 / L',
@@ -47,6 +51,8 @@ export default function EVStationsNearby() {
       async (pos) => {
         const lat = pos.coords.latitude;
         const lng = pos.coords.longitude;
+        const accuracy = Math.round(pos.coords.accuracy || 20);
+        setGpsAccuracy(accuracy);
         setUserCoords({ lat, lng });
         setLocationSource('Live GPS Sensor');
 
@@ -65,10 +71,19 @@ export default function EVStationsNearby() {
       },
       (err) => {
         setGpsLoading(false);
-        setLocationAreaName('Jaipur Central Hub');
+        setLocationAreaName('C-Scheme / Central Jaipur');
+        setUserCoords({ lat: 26.9124, lng: 75.8016 });
       },
-      { timeout: 8000, enableHighAccuracy: true }
+      { timeout: 15000, enableHighAccuracy: true, maximumAge: 0 }
     );
+  };
+
+  const handleSelectQuickSector = (sec) => {
+    setUserCoords({ lat: sec.lat, lng: sec.lng });
+    setLocationAreaName(sec.name);
+    setLocationSource('Selected Sector');
+    setGpsAccuracy(15);
+    toast.success(`Search area switched to ${sec.label}`, { toastId: 'ev-quick-sector' });
   };
 
   const handleSearchCitySubmit = async (e) => {
@@ -88,7 +103,7 @@ export default function EVStationsNearby() {
         setUserCoords({ lat, lng });
         setLocationAreaName(displayName);
         setLocationSource('User Custom Search');
-        toast.success(`📍 Search area updated: ${displayName.split(',')[0]}`);
+        toast.success(`Search area updated: ${displayName.split(',')[0]}`, { toastId: 'ev-search-area' });
       } else {
         toast.error('Location not found. Please try another city or locality name.');
       }
@@ -145,38 +160,61 @@ export default function EVStationsNearby() {
   });
 
   const categoryTabs = [
-    { id: 'all', label: 'All Fuel & EV Hubs', icon: '🌐' },
-    { id: 'ev', label: '⚡ EV Fast Charging', icon: '⚡' },
-    { id: 'cng', label: '🌿 CNG Gas Stations', icon: '🌿' },
-    { id: 'petrol', label: '⛽ Petrol & Diesel Pumps', icon: '⛽' }
+    { id: 'all', label: 'All Fuel & EV Hubs', renderIcon: (props) => <IconGlobe {...props} /> },
+    { id: 'ev', label: 'EV Fast Charging', renderIcon: (props) => <IconZap {...props} /> },
+    { id: 'cng', label: 'CNG Gas Stations', renderIcon: (props) => <IconLeaf {...props} /> },
+    { id: 'petrol', label: 'Petrol & Diesel Pumps', renderIcon: (props) => <IconFuel {...props} /> }
   ];
 
   return (
     <div style={{ minHeight: '100vh', background: '#f8fafc', paddingTop: '80px', paddingBottom: '60px' }}>
       <div className="container" style={{ maxWidth: '1020px' }}>
         {/* Page Header */}
-        <div style={{ marginBottom: '22px' }}>
-          <div
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px', marginBottom: '22px' }}>
+          <div>
+            <div
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                fontSize: '12px',
+                fontWeight: '700',
+                color: '#059669',
+                textTransform: 'uppercase',
+                letterSpacing: '0.04em',
+                marginBottom: '4px'
+              }}
+            >
+              <IconFuel size={14} color="#059669" /> Real-Time Energy & Fuel Grid
+            </div>
+            <h1 style={{ fontSize: '30px', fontWeight: '800', color: '#0f172a', letterSpacing: '-0.02em', margin: 0 }}>
+              Nearby Fuel, CNG & EV Charging Hubs
+            </h1>
+            <p style={{ color: '#64748b', fontSize: '15px', marginTop: '6px', maxWidth: '680px' }}>
+              Verified real-world Petrol pumps, CNG stations, and Fast EV chargers across India with live distance and turn-by-turn routing.
+            </p>
+          </div>
+
+          <button
+            onClick={() => setIsCalcOpen(true)}
             style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              fontSize: '12px',
+              background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+              color: '#ffffff',
+              border: 'none',
+              borderRadius: '12px',
+              padding: '12px 18px',
+              fontSize: '14px',
               fontWeight: '700',
-              color: '#059669',
-              textTransform: 'uppercase',
-              letterSpacing: '0.04em',
-              marginBottom: '4px'
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              boxShadow: '0 4px 14px rgba(16, 185, 129, 0.35)'
             }}
           >
-            ⛽ 🌿 ⚡ Real-Time Energy & Fuel Grid
-          </div>
-          <h1 style={{ fontSize: '30px', fontWeight: '800', color: '#0f172a', letterSpacing: '-0.02em', margin: 0 }}>
-            Nearby Fuel, CNG & EV Charging Hubs
-          </h1>
-          <p style={{ color: '#64748b', fontSize: '15px', marginTop: '6px' }}>
-            Verified real-world Petrol pumps, CNG stations, and Fast EV chargers across India with live distance and turn-by-turn routing.
-          </p>
+            <IconBatteryCharging size={18} color="#ffffff" />
+            EV Charge Calculator
+          </button>
         </div>
 
         {/* Live Daily Fuel Rates Ticker */}
@@ -188,11 +226,13 @@ export default function EVStationsNearby() {
           userCoords={userCoords}
           locationSource={locationSource}
           gpsLoading={gpsLoading}
+          gpsAccuracy={gpsAccuracy}
           onUseGps={autoDetectUserLocation}
           searchCityQuery={searchCityQuery}
           setSearchCityQuery={setSearchCityQuery}
           searchCityLoading={searchCityLoading}
           onSearchCitySubmit={handleSearchCitySubmit}
+          onSelectQuickSector={handleSelectQuickSector}
         />
 
         {/* Category Filter Tabs */}
@@ -219,6 +259,7 @@ export default function EVStationsNearby() {
                   transition: 'all 0.15s ease'
                 }}
               >
+                {tab.renderIcon({ size: 15, color: isSelected ? '#1d4ed8' : '#64748b' })}
                 <span>{tab.label}</span>
               </button>
             );
@@ -272,7 +313,9 @@ export default function EVStationsNearby() {
           </div>
         ) : filteredStations.length === 0 ? (
           <div className="card" style={{ textAlign: 'center', padding: '50px 20px', background: '#ffffff' }}>
-            <div style={{ fontSize: '36px', marginBottom: '12px' }}>⛽</div>
+            <div style={{ marginBottom: '12px' }}>
+              <IconFuel size={36} color="#94a3b8" />
+            </div>
             <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#0f172a', margin: '0 0 6px' }}>
               No Fuel Stations Found Within Selected Range
             </h3>
@@ -296,8 +339,8 @@ export default function EVStationsNearby() {
               <span style={{ fontSize: '13px', fontWeight: '700', color: '#475569' }}>
                 Showing {filteredStations.length} Station{filteredStations.length > 1 ? 's' : ''} (Nearest First)
               </span>
-              <span style={{ fontSize: '12.5px', color: '#059669', fontWeight: '700' }}>
-                📍 Nearest: {filteredStations[0]?.name} ({filteredStations[0]?.distanceKm} km away)
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '12.5px', color: '#059669', fontWeight: '700' }}>
+                <IconNavigation size={13} color="#059669" /> Nearest: {filteredStations[0]?.name} ({filteredStations[0]?.distanceKm} km away)
               </span>
             </div>
 
@@ -308,42 +351,12 @@ export default function EVStationsNearby() {
         )}
       </div>
 
-      <style>{`
-        .station-cta-col {
-          text-align: right;
-          display: flex;
-          flex-direction: column;
-          align-items: flex-end;
-          justify-content: space-between;
-          min-height: 120px;
-        }
-        .station-btn-row {
-          display: flex;
-          gap: 8px;
-          margin-top: 12px;
-        }
-        @media (max-width: 640px) {
-          .station-cta-col {
-            width: 100%;
-            text-align: left;
-            align-items: flex-start;
-            min-height: auto;
-            border-top: 1px solid #f1f5f9;
-            padding-top: 12px;
-            margin-top: 6px;
-          }
-          .station-btn-row {
-            width: 100%;
-          }
-          .nav-map-btn {
-            flex: 1;
-            text-align: center;
-          }
-          .call-btn {
-            flex: 0 0 auto;
-          }
-        }
-      `}</style>
+      {/* EV Charge Calculator Modal */}
+      <EvChargeCalculatorModal
+        isOpen={isCalcOpen}
+        onClose={() => setIsCalcOpen(false)}
+        ratePerKwh={parseFloat(fuelRates.evUnit?.replace(/[^0-9.]/g, '')) || 18.5}
+      />
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import io from 'socket.io-client';
 import api from '../utils/api';
 import { getDynamicPrice } from '../utils/pricing';
@@ -18,14 +18,19 @@ export default function Dashboard() {
   const [search, setSearch] = useState('');
   const [locationSearchInput, setLocationSearchInput] = useState('');
   const [locationAreaName, setLocationAreaName] = useState('Detecting Your Location...');
-  const [userCoords, setUserCoords] = useState({ lat: 26.9751, lng: 75.7566 });
+  const [userCoords, setUserCoords] = useState({ lat: 26.9124, lng: 75.8016 });
   const [gpsLoading, setGpsLoading] = useState(false);
+  const [gpsAccuracy, setGpsAccuracy] = useState(null);
   const [radiusKm, setRadiusKm] = useState('15');
   const [occupancyData, setOccupancyData] = useState({});
   const currentHour = new Date().getHours();
+  const hasDetectedRef = useRef(false);
 
   useEffect(() => {
-    autoDetectUserLocation();
+    if (!hasDetectedRef.current) {
+      hasDetectedRef.current = true;
+      autoDetectUserLocation();
+    }
     const socket = io('http://localhost:5000');
     socket.on('lot-occupancy-update', (data) => {
       setOccupancyData((prev) => ({ ...prev, [data.lotId]: data }));
@@ -48,13 +53,16 @@ export default function Dashboard() {
       async (pos) => {
         const lat = pos.coords.latitude;
         const lng = pos.coords.longitude;
+        const accuracy = Math.round(pos.coords.accuracy || 20);
+        setGpsAccuracy(accuracy);
         setUserCoords({ lat, lng });
 
         try {
           const revRes = await api.get('/ev-stations/reverse-geocode', { params: { lat, lng } });
           if (revRes.data.success && revRes.data.locationName) {
             setLocationAreaName(revRes.data.locationName);
-            toast.success(`📍 Location Acquired: ${revRes.data.locationName}`);
+            const accText = accuracy <= 100 ? ` (±${accuracy}m precision)` : '';
+            toast.success(`Location Acquired: ${revRes.data.locationName}${accText}`, { toastId: 'location-acquired' });
           }
         } catch (e) {
           console.warn('Reverse geocode error:', e);
@@ -65,11 +73,19 @@ export default function Dashboard() {
       (err) => {
         setGpsLoading(false);
         console.warn('Geolocation denied/unavailable:', err);
-        setLocationAreaName('Vidyadhar Nagar, Jaipur');
-        toast.info('GPS unavailable. Type any area or city below to find parking spaces.');
+        setLocationAreaName('C-Scheme / Central Jaipur');
+        setUserCoords({ lat: 26.9124, lng: 75.8016 });
+        toast.info('GPS unavailable. Click any Quick Sector chip or search your area below.', { toastId: 'gps-unavailable' });
       },
-      { timeout: 8000, enableHighAccuracy: true }
+      { timeout: 15000, enableHighAccuracy: true, maximumAge: 0 }
     );
+  };
+
+  const handleSelectQuickSector = (sector) => {
+    setUserCoords({ lat: sector.lat, lng: sector.lng });
+    setLocationAreaName(sector.name);
+    setGpsAccuracy(15);
+    toast.success(`Area switched to ${sector.label}`, { toastId: 'quick-sector' });
   };
 
   const fetchNearbyParking = async () => {
@@ -112,12 +128,12 @@ export default function Dashboard() {
         const newLng = parseFloat(target.lon);
         setUserCoords({ lat: newLat, lng: newLng });
         setLocationAreaName(target.display_name.split(',').slice(0, 2).join(','));
-        toast.success(`📍 Shifted Location: ${target.display_name.split(',')[0]}`);
+        toast.success(`Shifted Location: ${target.display_name.split(',')[0]}`, { toastId: 'shifted-location' });
       } else {
-        toast.error('Location not found. Please try another area or city name.');
+        toast.error('Location not found. Please try another area or city name.', { toastId: 'loc-not-found' });
       }
     } catch (err) {
-      toast.error('Search request failed. Please check your internet connection.');
+      toast.error('Search request failed. Please check your internet connection.', { toastId: 'search-failed' });
     } finally {
       setGpsLoading(false);
     }
@@ -155,7 +171,9 @@ export default function Dashboard() {
             locationAreaName={locationAreaName}
             userCoords={userCoords}
             gpsLoading={gpsLoading}
+            gpsAccuracy={gpsAccuracy}
             autoDetectUserLocation={autoDetectUserLocation}
+            onSelectQuickSector={handleSelectQuickSector}
           />
 
           <DashboardSearchBar

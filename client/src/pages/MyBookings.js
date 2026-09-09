@@ -7,6 +7,8 @@ import IndoorWayfinderModal from '../components/IndoorWayfinderModal';
 import EcoImpactCard from '../components/EcoImpactCard';
 import BookingCard from '../components/bookings/BookingCard';
 import ExtendBookingModal from '../components/bookings/ExtendBookingModal';
+import DigitalTicketModal from '../components/booking/DigitalTicketModal';
+import FindMyCarModal from '../components/parking/FindMyCarModal';
 
 /**
  * Enterprise User Reservation Ledger Page
@@ -19,6 +21,8 @@ export default function MyBookings() {
   const [extendHours, setExtendHours] = useState(1);
   const [extendingLoading, setExtendingLoading] = useState(false);
   const [wayfinderBooking, setWayfinderBooking] = useState(null);
+  const [ticketBooking, setTicketBooking] = useState(null);
+  const [radarBooking, setRadarBooking] = useState(null);
   const [togglingEvId, setTogglingEvId] = useState(null);
   const navigate = useNavigate();
 
@@ -176,6 +180,8 @@ export default function MyBookings() {
                 onCancel={handleCancel}
                 onOpenExtend={setSelectedExtendBooking}
                 onOpenWayfinder={setWayfinderBooking}
+                onOpenTicket={setTicketBooking}
+                onOpenFindCar={setRadarBooking}
                 togglingEvId={togglingEvId}
                 onToggleEv={handleToggleEv}
               />
@@ -198,6 +204,24 @@ export default function MyBookings() {
           <IndoorWayfinderModal
             booking={wayfinderBooking}
             onClose={() => setWayfinderBooking(null)}
+          />
+        )}
+
+        {/* Digital Ticket Modal */}
+        {ticketBooking && (
+          <DigitalTicketModal
+            isOpen={Boolean(ticketBooking)}
+            booking={ticketBooking}
+            onClose={() => setTicketBooking(null)}
+          />
+        )}
+
+        {/* Find My Car Radar Modal */}
+        {radarBooking && (
+          <FindMyCarModal
+            isOpen={Boolean(radarBooking)}
+            booking={radarBooking}
+            onClose={() => setRadarBooking(null)}
           />
         )}
       </div>

@@ -1,5 +1,5 @@
 import React from 'react';
-import { IconShield, IconZap } from './Icons';
+import { IconShield, IconZap, IconAward, IconLeaf } from './Icons';
 
 /**
  * Enterprise Green City ESG & Eco-Impact Scorecard
@@ -19,9 +19,9 @@ export default function EcoImpactCard({ bookingCount = 1 }) {
   const co2PreventedKg = (count * 1.05).toFixed(1);
 
   const getTier = () => {
-    if (count >= 5) return { title: 'Urban Eco-Champion', color: '#047857', badge: 'badge-green', icon: '🏆' };
-    if (count >= 2) return { title: 'Green Commuter', color: '#0284c7', badge: 'badge-blue', icon: '🌱' };
-    return { title: 'Eco Pioneer', color: '#6366f1', badge: 'badge-gray', icon: '⚡' };
+    if (count >= 5) return { title: 'Urban Eco-Champion', color: '#047857', badge: 'badge-green', icon: <IconAward size={22} color="#047857" /> };
+    if (count >= 2) return { title: 'Green Commuter', color: '#0284c7', badge: 'badge-blue', icon: <IconLeaf size={22} color="#0284c7" /> };
+    return { title: 'Eco Pioneer', color: '#6366f1', badge: 'badge-gray', icon: <IconZap size={22} color="#6366f1" /> };
   };
 
   const tier = getTier();
@@ -41,7 +41,7 @@ export default function EcoImpactCard({ bookingCount = 1 }) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px', marginBottom: '16px' }}>
         <div>
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '11px', fontWeight: '700', color: '#059669', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '4px' }}>
-            🌱 Smart City Sustainability Ledger
+            <IconLeaf size={14} color="#059669" /> Smart City Sustainability Ledger
           </div>
           <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#0f172a', margin: 0 }}>
             Your UrbanPark Eco-Impact
@@ -51,8 +51,8 @@ export default function EcoImpactCard({ bookingCount = 1 }) {
           </p>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ fontSize: '20px' }}>{tier.icon}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <span style={{ display: 'flex', alignItems: 'center' }}>{tier.icon}</span>
           <div>
             <div style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', fontWeight: '600' }}>
               Citizen Rating

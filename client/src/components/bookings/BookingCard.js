@@ -2,6 +2,15 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { formatCurrency, formatDate, formatTime } from '../../utils/pricing';
 import EvChargingSessionWidget from './EvChargingSessionWidget';
+import {
+  IconCompass,
+  IconPrinter,
+  IconNavigation,
+  IconSparkles,
+  IconMapPin,
+  IconAlert,
+  IconCheck
+} from '../Icons';
 
 const STATUS_BADGES = {
   confirmed: 'badge-green',
@@ -18,6 +27,8 @@ export default function BookingCard({
   onCancel,
   onOpenExtend,
   onOpenWayfinder,
+  onOpenTicket,
+  onOpenFindCar,
   togglingEvId,
   onToggleEv
 }) {
@@ -107,8 +118,8 @@ export default function BookingCard({
             gap: '8px'
           }}
         >
-          <div style={{ fontSize: '13px', fontWeight: '600', color: '#b45309' }}>
-            ⚠️ Less than {remainingMins} min(s) remaining! Extend now to avoid overstay fine.
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: '600', color: '#b45309' }}>
+            <IconAlert size={15} color="#b45309" /> Less than {remainingMins} min(s) remaining! Extend now to avoid overstay fine.
           </div>
           <button
             onClick={(e) => {
@@ -265,13 +276,13 @@ export default function BookingCard({
                 borderRadius: '8px'
               }}
             >
-              <div style={{ fontSize: '12px', fontWeight: '700', textTransform: 'uppercase', color: '#86198f', marginBottom: '6px' }}>
-                🧼 Concierge Add-on Services:
+              <div style={{ fontSize: '12px', fontWeight: '700', textTransform: 'uppercase', color: '#86198f', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <IconSparkles size={14} color="#86198f" /> Concierge Add-on Services:
               </div>
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                 {booking.addOnServices.map((svc, idx) => (
-                  <span key={idx} style={{ fontSize: '12px', padding: '4px 10px', background: '#fae8ff', color: '#86198f', border: '1px solid #f0abfc', borderRadius: '6px', fontWeight: '600' }}>
-                    ✓ {svc.name} (₹{svc.price}) • Scheduled
+                  <span key={idx} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '12px', padding: '4px 10px', background: '#fae8ff', color: '#86198f', border: '1px solid #f0abfc', borderRadius: '6px', fontWeight: '600' }}>
+                    <IconCheck size={12} color="#86198f" /> {svc.name} (₹{svc.price}) • Scheduled
                   </span>
                 ))}
               </div>
@@ -288,10 +299,13 @@ export default function BookingCard({
                 border: '1px solid #e2e8f0',
                 borderRadius: '8px',
                 fontSize: '12.5px',
-                color: '#334155'
+                color: '#334155',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
               }}
             >
-              📌 <strong>Driver Memo:</strong> {booking.parkingNotes}
+              <IconMapPin size={15} color="#2563eb" /> <strong>Driver Memo:</strong> {booking.parkingNotes}
             </div>
           )}
 
@@ -300,13 +314,39 @@ export default function BookingCard({
             <button
               onClick={(e) => {
                 e.stopPropagation();
+                onOpenFindCar && onOpenFindCar(booking);
+              }}
+              className="btn btn-secondary"
+              style={{ padding: '8px 14px', fontSize: '12.5px', background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', display: 'flex', alignItems: 'center', gap: '6px' }}
+            >
+              <IconCompass size={14} color="#1d4ed8" />
+              Find Car (Radar)
+            </button>
+
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onOpenTicket && onOpenTicket(booking);
+              }}
+              className="btn btn-secondary"
+              style={{ padding: '8px 14px', fontSize: '12.5px', background: '#0f172a', color: '#ffffff', border: 'none', display: 'flex', alignItems: 'center', gap: '6px' }}
+            >
+              <IconPrinter size={14} color="#ffffff" />
+              Digital Ticket
+            </button>
+
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
                 onOpenWayfinder(booking);
               }}
               className="btn btn-secondary"
-              style={{ padding: '8px 16px', fontSize: '13px', background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe' }}
+              style={{ padding: '8px 14px', fontSize: '12.5px', display: 'flex', alignItems: 'center', gap: '6px' }}
             >
-              🗺️ Locate Car / Bay
+              <IconNavigation size={14} />
+              Bay Map
             </button>
+
             {canExtend && (
               <button
                 onClick={(e) => {
@@ -314,18 +354,19 @@ export default function BookingCard({
                   onOpenExtend(booking);
                 }}
                 className="btn btn-primary"
-                style={{ padding: '8px 16px', fontSize: '13px' }}
+                style={{ padding: '8px 14px', fontSize: '12.5px' }}
               >
-                + Extend Duration
+                + Extend
               </button>
             )}
+
             {isCancellable && (
               <button
                 onClick={() => onCancel(booking._id)}
                 className="btn btn-danger"
-                style={{ padding: '8px 16px', fontSize: '13px' }}
+                style={{ padding: '8px 14px', fontSize: '12.5px' }}
               >
-                Cancel Reservation
+                Cancel
               </button>
             )}
           </div>

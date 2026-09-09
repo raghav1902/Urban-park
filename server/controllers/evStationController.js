@@ -161,5 +161,6 @@ module.exports = {
   getNearbyEvStations,
   getStationById,
   getFuelRates,
-  getReverseGeocode
+  getReverseGeocode,
+  reverseGeocode: getReverseGeocode
 };

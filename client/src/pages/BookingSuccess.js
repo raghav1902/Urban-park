@@ -10,9 +10,15 @@ import {
   IconCreditCard,
   IconDownload,
   IconCar,
-  IconQrCode
+  IconQrCode,
+  IconPrinter,
+  IconCompass,
+  IconNavigation
 } from '../components/Icons';
 import IndoorWayfinderModal from '../components/IndoorWayfinderModal';
+import DigitalTicketModal from '../components/booking/DigitalTicketModal';
+import UpiSoundboxWidget from '../components/booking/UpiSoundboxWidget';
+import FindMyCarModal from '../components/parking/FindMyCarModal';
 
 /**
  * Enterprise Booking Confirmation & Gate Pass Voucher
@@ -24,6 +30,8 @@ export default function BookingSuccess() {
   const [booking, setBooking] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showWayfinder, setShowWayfinder] = useState(false);
+  const [showDigitalTicket, setShowDigitalTicket] = useState(false);
+  const [showFindCar, setShowFindCar] = useState(false);
 
   useEffect(() => {
     api.get(`/bookings/${id}`)
@@ -168,6 +176,15 @@ export default function BookingSuccess() {
           Your digital gate pass is active. Present this QR code at the entrance sensor barrier.
         </p>
 
+        {/* UPI Soundbox Announcement Simulation */}
+        <div style={{ marginBottom: '20px' }}>
+          <UpiSoundboxWidget
+            amount={booking.totalCost}
+            slotNumber={booking.slotId?.slotNumber || 'Bay #07'}
+            autoPlay={true}
+          />
+        </div>
+
         {/* QR Code Gate Pass Card */}
         {booking.qrCode && (
           <div
@@ -219,54 +236,30 @@ export default function BookingSuccess() {
           </div>
         )}
 
-        {/* Receipt Parameter Breakdown */}
-        <div className="card" style={{ marginBottom: '24px', textAlign: 'left', padding: '24px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px', paddingBottom: '12px', borderBottom: '1px solid #e2e8f0' }}>
-            <h2
-              style={{
-                fontSize: '15px',
-                fontWeight: '700',
-                color: '#0f172a',
-                textTransform: 'uppercase',
-                letterSpacing: '0.04em',
-                margin: 0
-              }}
-            >
-              Official Reservation Receipt
-            </h2>
-            {isExtended && actualExtHours > 0 && (
-              <span className="badge badge-blue" style={{ fontSize: '11px' }}>
-                +{actualExtHours}h Extended Pass
-              </span>
-            )}
+        {/* Summary Receipt Table */}
+        <div
+          className="card"
+          style={{
+            marginBottom: '24px',
+            textAlign: 'left',
+            padding: '24px',
+            background: '#ffffff'
+          }}
+        >
+          <div
+            style={{
+              fontSize: '13px',
+              fontWeight: '700',
+              color: '#0f172a',
+              textTransform: 'uppercase',
+              letterSpacing: '0.05em',
+              marginBottom: '16px',
+              borderBottom: '1px solid #e2e8f0',
+              paddingBottom: '10px'
+            }}
+          >
+            Reservation Receipt
           </div>
-
-          {/* Extension Notice Callout if booking has an extension */}
-          {isExtended && actualExtHours > 0 && (
-            <div
-              style={{
-                marginBottom: '16px',
-                padding: '10px 14px',
-                background: '#eff6ff',
-                borderRadius: '8px',
-                border: '1px solid #bfdbfe',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                flexWrap: 'wrap',
-                gap: '8px',
-                fontSize: '12.5px',
-                color: '#1e40af'
-              }}
-            >
-              <div>
-                <strong>Duration Transparency:</strong> Initial ({origDuration}h) + Extension ({actualExtHours}h)
-              </div>
-              <span style={{ fontWeight: '700' }}>
-                Valid for {booking.duration} Hours total
-              </span>
-            </div>
-          )}
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {receiptItems.map((item) => (
@@ -301,37 +294,65 @@ export default function BookingSuccess() {
         </div>
 
         {/* Action Controls */}
-        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginBottom: '16px' }}>
+        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginBottom: '12px' }}>
           <button
             className="btn btn-primary"
             onClick={() => setShowWayfinder(true)}
-            style={{ width: '100%', padding: '13px', background: '#1d4ed8', fontSize: '14px', fontWeight: '700' }}
+            style={{ flex: 1, minWidth: '220px', padding: '13px', background: '#1d4ed8', fontSize: '14px', fontWeight: '700', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
           >
-            🗺️ View Bay Map & Walking Route
+            <IconNavigation size={18} />
+            View Bay Map & Route
+          </button>
+          <button
+            className="btn btn-secondary"
+            onClick={() => setShowFindCar(true)}
+            style={{ flex: 1, minWidth: '180px', padding: '13px', fontSize: '14px', fontWeight: '700', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+          >
+            <IconCompass size={18} color="#2563eb" />
+            Find My Car (Radar)
           </button>
         </div>
 
-        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginBottom: '16px' }}>
           <button
-            className="btn btn-secondary"
-            onClick={() => navigate('/dashboard')}
-            style={{ flex: 1, minWidth: '150px', padding: '12px' }}
+            onClick={() => setShowDigitalTicket(true)}
+            style={{
+              flex: 1,
+              minWidth: '200px',
+              padding: '13px',
+              background: '#0f172a',
+              color: '#ffffff',
+              border: 'none',
+              borderRadius: '10px',
+              fontSize: '14px',
+              fontWeight: '700',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              boxShadow: '0 4px 12px rgba(15, 23, 42, 0.2)'
+            }}
           >
-            Find Another Zone
+            <IconPrinter size={18} />
+            Digital Smart Ticket (PDF)
           </button>
           <button
             className="btn btn-secondary"
             onClick={() => navigate('/my-bookings')}
-            style={{ flex: 1, minWidth: '150px', padding: '12px' }}
+            style={{ flex: 1, minWidth: '150px', padding: '13px' }}
           >
             My Reservations
           </button>
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'center' }}>
           <button
             className="btn btn-ghost"
-            onClick={handlePrint}
-            style={{ minWidth: '110px', padding: '12px' }}
+            onClick={() => navigate('/dashboard')}
+            style={{ fontSize: '13px' }}
           >
-            Print Receipt
+            ← Back to Parking Zones
           </button>
         </div>
 
@@ -342,6 +363,20 @@ export default function BookingSuccess() {
             onClose={() => setShowWayfinder(false)}
           />
         )}
+
+        {/* Digital Ticket Modal */}
+        <DigitalTicketModal
+          isOpen={showDigitalTicket}
+          onClose={() => setShowDigitalTicket(false)}
+          booking={booking}
+        />
+
+        {/* Find My Car Modal */}
+        <FindMyCarModal
+          isOpen={showFindCar}
+          onClose={() => setShowFindCar(false)}
+          booking={booking}
+        />
       </div>
     </div>
   );

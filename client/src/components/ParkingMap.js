@@ -65,7 +65,7 @@ export default function ParkingMap({ lots = [], getLotOccupancy, userCoords }) {
           <Marker position={[userCoords.lat, userCoords.lng]} icon={redMarkerIcon}>
             <Popup>
               <div style={{ padding: '4px', fontWeight: '700', color: '#dc2626', fontSize: '13px' }}>
-                📍 Your Location / Search Center
+                Your Location / Search Center
               </div>
             </Popup>
           </Marker>

@@ -13,6 +13,22 @@ const parkingLotSchema = new mongoose.Schema({
   },
   amenities: [String],
   image: String,
+  isCommunityHost: { type: Boolean, default: false },
+  hostDetails: {
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    hostName: { type: String },
+    phone: { type: String },
+    upiId: { type: String },
+    spotType: {
+      type: String,
+      enum: ['driveway', 'covered_garage', 'gated_society', 'open_lot', 'commercial'],
+      default: 'driveway'
+    },
+    dailyPrice: { type: Number },
+    securityFeatures: [String],
+    description: { type: String },
+    isActive: { type: Boolean, default: true }
+  },
   createdAt: { type: Date, default: Date.now }
 });
 
