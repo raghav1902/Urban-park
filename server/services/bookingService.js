@@ -36,18 +36,18 @@ const processNewBooking = async (payload, user) => {
     };
   }
 
-  let lot;
+  // Disallow automated barrier reservations on public unmanaged OSM street lots
   if (typeof lotId === 'string' && lotId.startsWith('osm-park-')) {
-    lot = {
-      _id: lotId,
-      name: 'Real Municipal Smart Parking Plaza',
-      location: 'City Center Sector',
-      pricePerHour: 30
+    return {
+      status: 400,
+      data: {
+        success: false,
+        message: 'Municipal public street spaces operate on drive-in toll collection. Automated QR boom barrier reservation is only supported at UrbanPark Verified Smart Facilities.'
+      }
     };
-  } else {
-    lot = await ParkingLot.findById(lotId);
   }
 
+  const lot = await ParkingLot.findById(lotId);
   if (!lot) {
     return { status: 404, data: { success: false, message: 'Selected parking lot not found.' } };
   }
@@ -97,28 +97,21 @@ const processNewBooking = async (payload, user) => {
   }
 
   // Atomic reservation lock
-  let slot;
-  if (typeof slotId === 'string' && slotId.includes('osm-park-')) {
-    const parts = slotId.split('-');
-    const num = parts[parts.length - 1] || '1';
-    slot = { _id: slotId, slotNumber: `A${num}`, status: 'reserved' };
-  } else {
-    slot = await ParkingSlot.findOneAndUpdate(
-      {
-        _id: slotId,
-        $or: [
-          { status: 'available' },
-          { status: 'locked', lockExpiresAt: { $lt: now } },
-          { status: 'locked', lockedBy: user._id }
-        ]
-      },
-      {
-        $set: { status: 'reserved', updatedAt: now },
-        $unset: { lockExpiresAt: '', lockedBy: '' }
-      },
-      { new: true }
-    );
-  }
+  const slot = await ParkingSlot.findOneAndUpdate(
+    {
+      _id: slotId,
+      $or: [
+        { status: 'available' },
+        { status: 'locked', lockExpiresAt: { $lt: now } },
+        { status: 'locked', lockedBy: user._id }
+      ]
+    },
+    {
+      $set: { status: 'reserved', updatedAt: now },
+      $unset: { lockExpiresAt: '', lockedBy: '' }
+    },
+    { new: true }
+  );
 
   if (!slot) {
     return {
@@ -127,25 +120,36 @@ const processNewBooking = async (payload, user) => {
     };
   }
 
-  // Calculate pricing
+  // Calculate pricing securely on backend
   const { totalCost: parkingTariff } = computeIntervalDynamicPrice(lot.pricePerHour, start, end);
+
+  // Authoritative server-side price catalog for concierge add-ons (prevents client price manipulation)
+  const OFFICIAL_ADDON_RATES = {
+    'wash': { name: 'Eco Waterless Car Wash', price: 199 },
+    'nitrogen': { name: 'Digital Tyre Nitrogen Fill', price: 49 },
+    'vacuum': { name: 'Interior Deep Vacuuming', price: 149 }
+  };
 
   let addOnTotal = 0;
   const validatedAddOns = Array.isArray(addOnServices)
-    ? addOnServices.map((svc) => {
-        const price = Number(svc.price) || 0;
-        addOnTotal += price;
-        return { id: svc.id, name: svc.name, price, status: 'pending' };
-      })
+    ? addOnServices
+        .map((svc) => {
+          const official = OFFICIAL_ADDON_RATES[svc.id];
+          if (!official) return null;
+          addOnTotal += official.price;
+          return { id: svc.id, name: official.name, price: official.price, status: 'pending' };
+        })
+        .filter(Boolean)
     : [];
 
+  // Authoritative server-side tariff for EV charging sessions
   let evCost = 0;
   let evPayload = { enabled: false };
   if (evCharging?.enabled) {
-    evCost = Number(evCharging.chargingCost) || (25 * 15);
+    evCost = 225; // Flat standard EV fast charging session rate
     evPayload = {
       enabled: true,
-      chargerType: evCharging.chargerType || 'Type-2 22kW AC',
+      chargerType: 'Type-2 22kW Fast AC',
       kwhConsumed: 0,
       chargingCost: evCost,
       currentBatteryPct: Number(evCharging.currentBatteryPct) || 45,

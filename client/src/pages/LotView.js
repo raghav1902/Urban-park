@@ -11,7 +11,8 @@ import {
   IconZap,
   IconCar,
   IconShield,
-  IconClock
+  IconClock,
+  IconNavigation
 } from '../components/Icons';
 import SlotGridMatrix from '../components/SlotGridMatrix';
 import OccupancyForecastChart from '../components/OccupancyForecastChart';
@@ -175,6 +176,43 @@ export default function LotView() {
       </div>
 
       <div className="container" style={{ paddingTop: '28px' }}>
+        {id?.startsWith('osm-park-') && (
+          <div
+            style={{
+              background: '#f8fafc',
+              border: '1.5px solid #cbd5e1',
+              borderRadius: '12px',
+              padding: '16px 20px',
+              marginBottom: '24px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '16px',
+              flexWrap: 'wrap'
+            }}
+          >
+            <div>
+              <div style={{ fontWeight: '800', fontSize: '15px', color: '#0f172a' }}>
+                Municipal Public Street Parking Facility
+              </div>
+              <div style={{ fontSize: '13px', color: '#64748b', marginTop: '3px' }}>
+                This space operates under municipal authority guidelines (drive-in entry with on-site booth ticketing). Automated QR barrier reservations are exclusive to UrbanPark Verified Smart Facilities.
+              </div>
+            </div>
+            {lot?.coordinates && (
+              <a
+                href={`https://www.google.com/maps/dir/?api=1&destination=${lot.coordinates.lat},${lot.coordinates.lng}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn btn-primary"
+                style={{ fontSize: '13px', padding: '10px 18px', display: 'flex', alignItems: 'center', gap: '6px', textDecoration: 'none' }}
+              >
+                <IconNavigation size={14} /> Open Live GPS Navigation ↗
+              </a>
+            )}
+          </div>
+        )}
+
         {/* KPI Strip */}
         <div
           style={{
@@ -254,14 +292,33 @@ export default function LotView() {
                   </div>
                 </div>
 
-                <button
-                  className="btn btn-primary"
-                  onClick={() => navigate(`/book/${id}`, { state: { slot: selectedSlot, lot, pricing } })}
-                  style={{ width: '100%', padding: '12px', fontSize: '14px' }}
-                >
-                  Proceed to Reservation
-                  <IconArrowRight size={16} />
-                </button>
+                {id?.startsWith('osm-park-') ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {lot?.coordinates && (
+                      <a
+                        href={`https://www.google.com/maps/dir/?api=1&destination=${lot.coordinates.lat},${lot.coordinates.lng}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="btn btn-primary"
+                        style={{ width: '100%', padding: '12px', fontSize: '14px', textAlign: 'center', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                      >
+                        <IconNavigation size={16} /> Open Drive-In Navigation ↗
+                      </a>
+                    )}
+                    <div style={{ fontSize: '11.5px', color: '#64748b', textAlign: 'center', lineHeight: '1.4' }}>
+                      Drive into municipal bay. Pay on arrival at the parking booth.
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    className="btn btn-primary"
+                    onClick={() => navigate(`/book/${id}`, { state: { slot: selectedSlot, lot, pricing } })}
+                    style={{ width: '100%', padding: '12px', fontSize: '14px' }}
+                  >
+                    Proceed to Reservation
+                    <IconArrowRight size={16} />
+                  </button>
+                )}
               </div>
             </div>
           )}
